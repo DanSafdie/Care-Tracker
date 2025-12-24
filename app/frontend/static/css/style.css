@@ -130,10 +130,19 @@ h1 {
 
 .pet-section h2 {
     font-size: 1.5rem;
-    margin-bottom: var(--space-sm);
+    margin-bottom: 0;
     display: flex;
     align-items: center;
     gap: var(--space-sm);
+}
+
+.pet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
 }
 
 .pet-species {
@@ -525,8 +534,7 @@ h1 {
     background: #e1f5fe;
     border: 2px solid #03a9f4;
     border-radius: var(--radius-md);
-    padding: var(--space-md);
-    margin-bottom: var(--space-lg);
+    padding: var(--space-sm) var(--space-md);
     animation: pulse-timer 2s infinite ease-in-out;
 }
 
@@ -539,35 +547,37 @@ h1 {
 .timer-content {
     display: flex;
     align-items: center;
-    gap: var(--space-md);
+    gap: var(--space-sm);
     font-weight: 600;
     color: #0277bd;
+    font-size: 0.9rem;
 }
 
 .timer-icon {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
 }
 
 .timer-label {
-    font-size: 1rem;
+    white-space: nowrap;
 }
 
 .timer-countdown {
     font-family: monospace;
-    font-size: 1.25rem;
-    letter-spacing: 1px;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
 }
 
 .btn-clear-timer {
-    margin-left: auto;
     background: none;
     border: none;
     color: #0277bd;
     cursor: pointer;
-    font-size: 1.25rem;
-    padding: 0 var(--space-sm);
+    font-size: 1.1rem;
+    padding: 0 0 0 var(--space-xs);
     opacity: 0.6;
     transition: opacity 0.2s;
+    line-height: 1;
 }
 
 .btn-clear-timer:hover {
