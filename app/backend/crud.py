@@ -1,5 +1,5 @@
 """
-CRUD (Create, Read, Update, Delete) operations for Pet Care Tracker.
+CRUD (Create, Read, Update, Delete) operations for Care-Tracker.
 Database operations separated from API routes for cleaner code.
 """
 from sqlalchemy.orm import Session

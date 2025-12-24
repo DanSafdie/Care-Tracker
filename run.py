@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Convenience script to run the Pet Care Tracker server.
+Convenience script to run the Care-Tracker server.
 Usage: python run.py [--host HOST] [--port PORT]
 """
 import sys

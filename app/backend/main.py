@@ -1,5 +1,5 @@
 """
-Pet Care Tracker - Main FastAPI Application
+Care-Tracker - Main FastAPI Application
 
 A household pet care tracking system that allows multiple family members
 to track and coordinate pet care tasks like medications, feeding, and supplements.

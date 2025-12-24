@@ -1,5 +1,5 @@
 """
-SQLAlchemy models for Pet Care Tracker.
+SQLAlchemy models for Care-Tracker.
 
 Models:
 - Pet: Represents a pet (dog, cat, etc.)

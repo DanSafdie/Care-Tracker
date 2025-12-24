@@ -1,5 +1,5 @@
 /**
- * Pet Care Tracker - Frontend JavaScript
+ * Care-Tracker - Frontend JavaScript
  * Handles task completion, undo actions, and UI interactions
  */
 
@@ -361,6 +361,6 @@ document.addEventListener('keydown', (e) => {
 
 // Initialize on load
 window.addEventListener('load', () => {
-    console.log('Pet Care Tracker loaded');
+    console.log('Care-Tracker loaded');
     checkTimers();
 });

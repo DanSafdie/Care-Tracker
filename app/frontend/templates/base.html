@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Pet Care Tracker{% endblock %}</title>
+    <title>{% block title %}Care-Tracker{% endblock %}</title>
     <link rel="stylesheet" href="/static/css/style.css?v={{ now.timestamp() }}">
     <!-- Auto-refresh every 60 seconds to keep status current -->
     <meta http-equiv="refresh" content="60">
@@ -11,7 +11,7 @@
 <body>
     <header>
         <nav>
-            <div class="logo">🐾 Pet Care Tracker</div>
+            <div class="logo">🐾 Care-Tracker</div>
             <ul class="nav-links">
                 <li><a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Dashboard</a></li>
                 <li><a href="/history" class="{% if request.url.path == '/history' %}active{% endif %}">History</a></li>

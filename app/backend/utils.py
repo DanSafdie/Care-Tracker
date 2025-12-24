@@ -1,5 +1,5 @@
 """
-Utility functions for Pet Care Tracker.
+Utility functions for Care-Tracker.
 """
 from datetime import datetime, date, time, timedelta
 import pytz

@@ -1,5 +1,5 @@
 """
-Database configuration and session management for Pet Care Tracker.
+Database configuration and session management for Care-Tracker.
 Uses SQLite for simplicity and local storage.
 """
 from sqlalchemy import create_engine
