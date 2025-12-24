@@ -9,7 +9,19 @@
 
     {% for pet_data in daily_status %}
     <section class="pet-section">
-        <h2>{{ pet_data.pet.name }} <span class="pet-species">({{ pet_data.pet.species }})</span></h2>
+        <div class="pet-header">
+            <h2>{{ pet_data.pet.name }} <span class="pet-species">({{ pet_data.pet.species }})</span></h2>
+            
+            <!-- Timer Container -->
+            <div id="pet-timer-{{ pet_data.pet.id }}" class="pet-timer" style="display: none;">
+                <div class="timer-content">
+                    <span class="timer-icon">⏱️</span>
+                    <span class="timer-label" id="timer-label-{{ pet_data.pet.id }}">Timer</span>: 
+                    <span class="timer-countdown" id="timer-display-{{ pet_data.pet.id }}">00:00:00</span>
+                    <button class="btn-clear-timer" onclick="clearTimer({{ pet_data.pet.id }})">✕</button>
+                </div>
+            </div>
+        </div>
         
         {% if pet_data.pet.notes %}
         <p class="pet-notes">{{ pet_data.pet.notes }}</p>
@@ -50,7 +62,7 @@
                     ↩ Undo
                 </button>
                 {% else %}
-                <button class="btn btn-complete" onclick="completeTask({{ task.care_item.id }}, '{{ task.care_item.name }}')">
+                <button class="btn btn-complete" onclick="completeTask({{ task.care_item.id }}, '{{ task.care_item.name }}', {{ pet_data.pet.id }})">
                     ✓ Mark Complete
                 </button>
                 {% endif %}

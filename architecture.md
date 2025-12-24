@@ -9,6 +9,7 @@ A household pet care tracking system that enables multiple family members to coo
 - **Multi-user access**: No authentication required for household use on local network
 - **Task tracking**: Mark care items complete, with undo capability (with confirmation)
 - **4 AM day reset**: The "care day" resets at 4 AM, not midnight, to handle late-night care
+- **Timer functionality**: Smart timers for medication/feeding intervals (e.g., 2hr wait after food for Denamarin)
 - **Full history**: All actions logged with timestamps and optional user identification
 - **Extensible design**: Built to accommodate future rule sets, additional pets, and integrations
 
@@ -116,6 +117,17 @@ Historical record of task completions and undos.
 
 ### System
 - `GET /api/info` - Get system info (care day, version, etc.)
+
+## Timer Functionality (New)
+
+The system includes a smart timer feature to help manage dependencies between tasks:
+
+- **Triggered by actions**: Completing specific tasks (like Breakfast or Denamarin) prompts the user to set a timer.
+- **Empty stomach tracking**: When Breakfast is completed (and Denamarin is pending), a 2-hour timer can be set.
+- **Post-medication tracking**: When Denamarin is completed, a 1-hour timer can be set to know when the next meal can be given.
+- **Persistence**: Timer state is stored in `localStorage`, so it persists across page reloads and tab closes.
+- **Visual indicators**: A pulsing timer banner appears at the top of the pet's section when active.
+- **Ready state**: When the timer reaches zero, it displays a "READY!" message and turns green.
 
 ## 4 AM Day Reset Logic
 

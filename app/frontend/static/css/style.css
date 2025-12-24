@@ -520,6 +520,60 @@ h1 {
     vertical-align: middle;
 }
 
+/* ============== Timer ============== */
+.pet-timer {
+    background: #e1f5fe;
+    border: 2px solid #03a9f4;
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
+    margin-bottom: var(--space-lg);
+    animation: pulse-timer 2s infinite ease-in-out;
+}
+
+@keyframes pulse-timer {
+    0% { border-color: #03a9f4; box-shadow: 0 0 0 0 rgba(3, 169, 244, 0.2); }
+    50% { border-color: #0288d1; box-shadow: 0 0 0 4px rgba(3, 169, 244, 0.1); }
+    100% { border-color: #03a9f4; box-shadow: 0 0 0 0 rgba(3, 169, 244, 0.2); }
+}
+
+.timer-content {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    font-weight: 600;
+    color: #0277bd;
+}
+
+.timer-icon {
+    font-size: 1.25rem;
+}
+
+.timer-label {
+    font-size: 1rem;
+}
+
+.timer-countdown {
+    font-family: monospace;
+    font-size: 1.25rem;
+    letter-spacing: 1px;
+}
+
+.btn-clear-timer {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: #0277bd;
+    cursor: pointer;
+    font-size: 1.25rem;
+    padding: 0 var(--space-sm);
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.btn-clear-timer:hover {
+    opacity: 1;
+}
+
 /* ============== Footer ============== */
 footer {
     background: white;
