@@ -54,7 +54,7 @@ def seed_chessie_data(db: Session):
             pet_id=chessie.id,
             name="Ursodiol",
             description="Liver medication (ursodeoxycholic acid)",
-            notes="Can be given with food",
+            notes="Give with food",
             category="medication",
             display_order=2
         ),

@@ -20,7 +20,7 @@ A household pet care tracking system that helps multiple family members coordina
 | Item | Category | Notes |
 |------|----------|-------|
 | Denamarin | Medication | Give on empty stomach, at least 1 hour before food |
-| Ursodiol | Medication | Can be given with food |
+| Ursodiol | Medication | Give with food |
 | Fish Oil | Supplement | Give with food |
 | Breakfast | Food | - |
 | Dinner | Food | - |
