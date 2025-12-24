@@ -36,6 +36,36 @@ def create_pet(db: Session, pet: PetCreate) -> Pet:
     return db_pet
 
 
+def set_pet_timer(db: Session, pet_id: int, hours: float, label: str) -> Optional[Pet]:
+    """Set a timer for a pet."""
+    db_pet = get_pet(db, pet_id)
+    if not db_pet:
+        return None
+    
+    # Use local time (not UTC) so frontend JavaScript can parse it correctly
+    end_time = datetime.now() + timedelta(hours=hours)
+    db_pet.timer_end_time = end_time
+    db_pet.timer_label = label
+    
+    db.commit()
+    db.refresh(db_pet)
+    return db_pet
+
+
+def clear_pet_timer(db: Session, pet_id: int) -> Optional[Pet]:
+    """Clear a timer for a pet."""
+    db_pet = get_pet(db, pet_id)
+    if not db_pet:
+        return None
+    
+    db_pet.timer_end_time = None
+    db_pet.timer_label = None
+    
+    db.commit()
+    db.refresh(db_pet)
+    return db_pet
+
+
 # ============== CareItem Operations ==============
 
 def get_care_items(db: Session, pet_id: int = None, include_inactive: bool = False) -> List[CareItem]:

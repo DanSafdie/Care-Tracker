@@ -29,6 +29,10 @@ class Pet(Base):
     notes = Column(Text, nullable=True)  # General notes about the pet
     created_at = Column(DateTime, server_default=func.now())
     is_active = Column(Boolean, default=True)  # Soft delete support
+    
+    # Timer fields (server-side tracking)
+    timer_end_time = Column(DateTime, nullable=True)
+    timer_label = Column(String(100), nullable=True)
 
     # Relationship to care items
     care_items = relationship("CareItem", back_populates="pet")

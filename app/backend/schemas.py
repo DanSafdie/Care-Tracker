@@ -23,6 +23,8 @@ class PetResponse(PetBase):
     id: int
     is_active: bool
     created_at: datetime
+    timer_end_time: Optional[datetime] = None
+    timer_label: Optional[str] = None
 
     class Config:
         from_attributes = True

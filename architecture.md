@@ -118,16 +118,26 @@ Historical record of task completions and undos.
 ### System
 - `GET /api/info` - Get system info (care day, version, etc.)
 
-## Timer Functionality (New)
+## Timer Functionality
 
 The system includes a smart timer feature to help manage dependencies between tasks:
 
+### Features
 - **Triggered by actions**: Completing specific tasks (like Breakfast or Denamarin) prompts the user to set a timer.
 - **Empty stomach tracking**: When Breakfast is completed (and Denamarin is pending), a 2-hour timer can be set.
 - **Post-medication tracking**: When Denamarin is completed, a 1-hour timer can be set to know when the next meal can be given.
-- **Persistence**: Timer state is stored in `localStorage`, so it persists across page reloads and tab closes.
-- **Visual indicators**: A pulsing timer banner appears at the top of the pet's section when active.
-- **Ready state**: When the timer reaches zero, it displays a "READY!" message and turns green.
+- **Multi-device coordination**: Timer state is stored **server-side** in the database, allowing any household member to see the same timer status regardless of which device they use.
+- **Visual indicators**: A pulsing timer banner appears at the top right of the pet's header when active.
+- **Ready state**: When the timer reaches zero, it displays a "READY!" message with visual emphasis.
+- **Automatic replacement**: Setting a new timer automatically clears any existing timer for that pet.
+
+### Implementation
+- **Backend**: `Pet` model includes `timer_end_time` and `timer_label` fields
+- **API Endpoints**: 
+  - `POST /api/pets/{id}/timer?hours={hours}&label={label}` - Set a timer
+  - `DELETE /api/pets/{id}/timer` - Clear a timer
+- **Frontend**: JavaScript countdown updates every second, with server data as source of truth on page load
+- **Timezone handling**: Uses local time (not UTC) for consistency with household timezone
 
 ## 4 AM Day Reset Logic
 

@@ -96,5 +96,16 @@
 <script>
     // Store the care day for the page
     const careDay = "{{ care_day.isoformat() }}";
+    
+    // Inject server-side pet timers
+    const serverPetTimers = {
+        {% for pet_data in daily_status %}
+        "{{ pet_data.pet.id }}": {
+            "id": {{ pet_data.pet.id }},
+            "endTime": "{{ pet_data.pet.timer_end_time.isoformat() if pet_data.pet.timer_end_time else '' }}",
+            "label": "{{ pet_data.pet.timer_label or '' }}"
+        }{{ "," if not loop.last }}
+        {% endfor %}
+    };
 </script>
 {% endblock %}

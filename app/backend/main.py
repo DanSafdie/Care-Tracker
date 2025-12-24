@@ -173,6 +173,29 @@ async def get_pet(pet_id: int, db: Session = Depends(get_db)):
     return pet
 
 
+@app.post("/api/pets/{pet_id}/timer")
+async def set_pet_timer(
+    pet_id: int,
+    hours: float,
+    label: str,
+    db: Session = Depends(get_db)
+):
+    """Set a timer for a pet."""
+    pet = crud.set_pet_timer(db, pet_id, hours, label)
+    if not pet:
+        raise HTTPException(status_code=404, detail="Pet not found")
+    return {"success": True, "pet": pet}
+
+
+@app.delete("/api/pets/{pet_id}/timer")
+async def clear_pet_timer(pet_id: int, db: Session = Depends(get_db)):
+    """Clear a timer for a pet."""
+    pet = crud.clear_pet_timer(db, pet_id)
+    if not pet:
+        raise HTTPException(status_code=404, detail="Pet not found")
+    return {"success": True, "pet": pet}
+
+
 # ============== API Routes - Care Items ==============
 
 @app.get("/api/care-items", response_model=List[CareItemResponse])

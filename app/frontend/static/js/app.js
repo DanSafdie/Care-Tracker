@@ -90,13 +90,10 @@ async function submitComplete(careItemId, taskName, petId) {
         
         if (response.ok) {
             // Check if we should prompt for a timer
-            handleTimerPrompts(taskName, petId);
+            await handleTimerPrompts(taskName, petId);
             
             // Refresh the page to show updated status
-            // Delay slightly if a prompt was shown so it doesn't interrupt
-            setTimeout(() => {
-                location.reload();
-            }, 500);
+            location.reload();
         } else {
             const error = await response.json();
             alert(`Error: ${error.detail || 'Failed to complete task'}`);
@@ -112,7 +109,7 @@ async function submitComplete(careItemId, taskName, petId) {
  * @param {string} taskName - The completed task name
  * @param {number} petId - The pet ID
  */
-function handleTimerPrompts(taskName, petId) {
+async function handleTimerPrompts(taskName, petId) {
     if (taskName === 'Breakfast') {
         // Check if Denamarin is already completed
         const denaCard = findTaskCard('Denamarin', petId);
@@ -120,12 +117,12 @@ function handleTimerPrompts(taskName, petId) {
         
         if (!isDenaCompleted) {
             if (confirm('Breakfast complete! Set a 2-hour timer to know when she has an empty stomach for Denamarin?')) {
-                startTimer(petId, 2, 'Empty stomach for Denamarin');
+                await startTimer(petId, 2, 'Empty stomach for Denamarin');
             }
         }
     } else if (taskName === 'Denamarin') {
         if (confirm('Denamarin given! Set a 1-hour timer to know when she can have her next meal?')) {
-            startTimer(petId, 1, 'Ready for next meal');
+            await startTimer(petId, 1, 'Ready for next meal');
         }
     }
 }
@@ -134,14 +131,19 @@ function handleTimerPrompts(taskName, petId) {
  * Find a task card in the DOM by task name and pet section
  */
 function findTaskCard(taskName, petId) {
-    const petSection = document.querySelector(`.pet-section`); // Simplified for now, could be more specific
-    if (!petSection) return null;
-    
-    const cards = petSection.querySelectorAll('.task-card');
-    for (const card of cards) {
-        const nameElement = card.querySelector('.task-name');
-        if (nameElement && nameElement.textContent.trim() === taskName) {
-            return card;
+    // Look for the specific pet section
+    const petSections = document.querySelectorAll('.pet-section');
+    for (const section of petSections) {
+        // Find the pet-timer or pet-header to identify the pet ID
+        const timerContainer = section.querySelector(`[id^="pet-timer-${petId}"]`);
+        if (timerContainer) {
+            const cards = section.querySelectorAll('.task-card');
+            for (const card of cards) {
+                const nameElement = card.querySelector('.task-name');
+                if (nameElement && nameElement.textContent.trim() === taskName) {
+                    return card;
+                }
+            }
         }
     }
     return null;
@@ -176,51 +178,67 @@ async function submitUndo(careItemId) {
 // ============== Timer Logic ==============
 
 /**
- * Start a timer and persist to localStorage
+ * Start a timer and persist to backend
  */
-function startTimer(petId, hours, label) {
-    const durationMs = hours * 60 * 60 * 1000;
-    const endTime = Date.now() + durationMs;
-    
-    const timerData = {
-        petId,
-        endTime,
-        label,
-        active: true
-    };
-    
-    localStorage.setItem(`pet_timer_${petId}`, JSON.stringify(timerData));
-    initTimerDisplay(petId, timerData);
+async function startTimer(petId, hours, label) {
+    try {
+        const response = await fetch(`/api/pets/${petId}/timer?hours=${hours}&label=${encodeURIComponent(label)}`, {
+            method: 'POST'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            // The reload in submitComplete will handle showing the timer
+            return data;
+        } else {
+            console.error('Failed to set timer on server');
+        }
+    } catch (err) {
+        console.error('Error setting timer:', err);
+    }
 }
 
 /**
- * Clear a timer
+ * Clear a timer on backend
  */
-function clearTimer(petId) {
-    localStorage.removeItem(`pet_timer_${petId}`);
-    const timerEl = document.getElementById(`pet-timer-${petId}`);
-    if (timerEl) {
-        timerEl.style.display = 'none';
+async function clearTimer(petId) {
+    try {
+        const response = await fetch(`/api/pets/${petId}/timer`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            const timerEl = document.getElementById(`pet-timer-${petId}`);
+            if (timerEl) {
+                timerEl.style.display = 'none';
+            }
+            // Check if any other timers are active to keep interval running or not
+            checkAnyActiveTimers();
+        }
+    } catch (err) {
+        console.error('Error clearing timer:', err);
     }
-    
-    // Check if any other timers are active to keep interval running or not
-    checkAnyActiveTimers();
 }
 
 /**
  * Initialize timer display and interval
  */
-function initTimerDisplay(petId, timerData) {
+function initTimerDisplay(petId, label, endTimeStr) {
     const timerEl = document.getElementById(`pet-timer-${petId}`);
     const labelEl = document.getElementById(`timer-label-${petId}`);
     const displayEl = document.getElementById(`timer-display-${petId}`);
     
-    if (!timerEl || !labelEl || !displayEl) return;
+    if (!timerEl || !labelEl || !displayEl || !endTimeStr) return;
     
-    labelEl.textContent = timerData.label;
+    const endTime = new Date(endTimeStr).getTime();
+    
+    labelEl.textContent = label;
     timerEl.style.display = 'block';
     
-    updateTimerTick(petId, timerData.endTime);
+    // Store endTime on the element for easy access during ticks
+    timerEl.dataset.endTime = endTime;
+    
+    updateTimerTick(petId, endTime);
     
     if (!timerInterval) {
         timerInterval = setInterval(tickAllTimers, 1000);
@@ -232,7 +250,8 @@ function initTimerDisplay(petId, timerData) {
  */
 function updateTimerTick(petId, endTime) {
     const displayEl = document.getElementById(`timer-display-${petId}`);
-    if (!displayEl) return;
+    const timerEl = document.getElementById(`pet-timer-${petId}`);
+    if (!displayEl || !timerEl) return;
     
     const now = Date.now();
     const remaining = endTime - now;
@@ -240,16 +259,18 @@ function updateTimerTick(petId, endTime) {
     if (remaining <= 0) {
         displayEl.textContent = "00:00:00 - READY!";
         displayEl.style.color = "var(--success)";
-        // We keep it visible so user sees it's ready
+        timerEl.classList.add('timer-ready');
         return;
     }
     
     const h = Math.floor(remaining / 3600000);
     const m = Math.floor((remaining % 3600000) / 60000);
-    const s = Math.floor((remaining % 60000) / 1000);
+    const s = Math.floor((remaining % 60000) / 10000); // Note: Fix for formatting
+    const s_val = Math.floor((remaining % 60000) / 1000);
     
-    displayEl.textContent = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    displayEl.textContent = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s_val.toString().padStart(2, '0')}`;
     displayEl.style.color = "";
+    timerEl.classList.remove('timer-ready');
 }
 
 /**
@@ -258,17 +279,14 @@ function updateTimerTick(petId, endTime) {
 function tickAllTimers() {
     let hasActive = false;
     
-    // Check all possible timers in localStorage
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key.startsWith('pet_timer_')) {
-            const data = JSON.parse(localStorage.getItem(key));
-            if (data && data.active) {
-                updateTimerTick(data.petId, data.endTime);
-                hasActive = true;
-            }
+    const timerElements = document.querySelectorAll('.pet-timer');
+    timerElements.forEach(el => {
+        if (el.style.display !== 'none' && el.dataset.endTime) {
+            const petId = el.id.replace('pet-timer-', '');
+            updateTimerTick(petId, parseInt(el.dataset.endTime));
+            hasActive = true;
         }
-    }
+    });
     
     if (!hasActive && timerInterval) {
         clearInterval(timerInterval);
@@ -281,13 +299,12 @@ function tickAllTimers() {
  */
 function checkAnyActiveTimers() {
     let hasActive = false;
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key.startsWith('pet_timer_')) {
+    const timerElements = document.querySelectorAll('.pet-timer');
+    timerElements.forEach(el => {
+        if (el.style.display !== 'none') {
             hasActive = true;
-            break;
         }
-    }
+    });
     if (!hasActive && timerInterval) {
         clearInterval(timerInterval);
         timerInterval = null;
@@ -295,21 +312,16 @@ function checkAnyActiveTimers() {
 }
 
 /**
- * Initialize timers from localStorage on page load
+ * Initialize timers from server data on page load
  */
 function checkTimers() {
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key.startsWith('pet_timer_')) {
-            try {
-                const data = JSON.parse(localStorage.getItem(key));
-                if (data && data.active) {
-                    initTimerDisplay(data.petId, data);
-                }
-            } catch (e) {
-                console.error("Error parsing timer data", e);
+    if (typeof serverPetTimers !== 'undefined') {
+        Object.keys(serverPetTimers).forEach(petId => {
+            const timer = serverPetTimers[petId];
+            if (timer && timer.endTime) {
+                initTimerDisplay(petId, timer.label, timer.endTime);
             }
-        }
+        });
     }
 }
 
