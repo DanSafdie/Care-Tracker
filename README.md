@@ -44,12 +44,12 @@ pip install -r requirements.txt
 # Run the server
 python run.py
 
-# Open in browser: http://localhost:8000
+# Open in browser: http://localhost:8080
 ```
 
 ### Access from Other Devices
 
-The server binds to `0.0.0.0` by default, making it accessible from other devices on your network. Find your machine's IP address and access `http://YOUR_IP:8000`.
+The server binds to `0.0.0.0` by default, making it accessible from other devices on your network. Find your machine's IP address and access `http://YOUR_IP:8080`.
 
 ## Project Structure
 

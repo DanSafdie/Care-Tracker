@@ -52,6 +52,8 @@ A household pet care tracking system that enables multiple family members to coo
 ├── data/                     # SQLite database storage
 ├── requirements.txt          # Python dependencies
 ├── run.py                    # Convenience run script
+├── Dockerfile                # Docker image definition
+├── docker-compose.yml        # Docker Compose for local/server deployment
 └── architecture.md           # This file
 ```
 
@@ -203,7 +205,7 @@ pip install -r requirements.txt
 # Run the server
 python run.py
 
-# Access at http://localhost:8000
+# Access at http://localhost:8080
 ```
 
 ### Docker (Planned)
@@ -252,6 +254,6 @@ The system is designed to bridge the digital and physical worlds for lower frict
 | Variable | Default | Description |
 |----------|---------|-------------|
 | HOST | 0.0.0.0 | Server bind address |
-| PORT | 8000 | Server port |
+| PORT | 8080 | Server port |
 | DATA_DIR | /workspace/data | SQLite database location |
 | TZ | America/New_York | Timezone for 4 AM reset |
