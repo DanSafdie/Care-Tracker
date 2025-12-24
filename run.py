@@ -17,7 +17,7 @@ if __name__ == "__main__":
     host = os.environ.get("HOST", "0.0.0.0")
     port = int(os.environ.get("PORT", "8000"))
     
-    print(f"Starting Pet Care Tracker on http://{host}:{port}")
+    print(f"Starting Care-Tracker on http://{host}:{port}")
     print("Access from other devices on your network using your machine's IP address")
     print("Press Ctrl+C to stop\n")
     

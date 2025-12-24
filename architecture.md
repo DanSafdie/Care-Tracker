@@ -1,4 +1,4 @@
-# Pet Care Tracker - Architecture
+# Care-Tracker - Architecture
 
 ## Overview
 

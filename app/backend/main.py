@@ -35,7 +35,7 @@ from seed_data import run_seed
 
 # Create FastAPI app
 app = FastAPI(
-    title="Pet Care Tracker",
+    title="Care-Tracker",
     description="Track pet care tasks for the whole household",
     version="1.0.0"
 )

@@ -1,4 +1,4 @@
-# 🐾 Pet Care Tracker
+# 🐾 Care-Tracker
 
 A household pet care tracking system that helps multiple family members coordinate care tasks for pets. Track medications, feedings, supplements, and more with a complete history log.
 
