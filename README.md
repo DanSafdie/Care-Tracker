@@ -85,11 +85,13 @@ The server binds to `0.0.0.0` by default, making it accessible from other device
 
 ## Future Plans
 
-- **Docker deployment**: Containerized for easy deployment
-- **Rule enforcement**: Validate timing/dependencies between care items
-- **Home Assistant integration**: Control LEDs based on task status
-- **Notifications**: Reminders when tasks are overdue
-- **Multiple pets**: Already supported in the data model
+- **Docker & Remote Access**: Containerized deployment with Tailscale/Cloudflare for multi-house synchronization.
+- **Physical Button Integration**: Support for Zigbee/Z-Wave buttons (IKEA SOMRIG, Aqara) for "one-click" logging.
+- **Ambient LED Warnings**: State-based lighting in the kitchen (Green/Yellow/Red) to signal care status without checking a phone.
+- **Portable Care Kit**: A smart medication box that travels between houses and maintains a connection to the central server.
+- **Rule Enforcement**: Validate timing/dependencies between care items (e.g., empty stomach rules).
+- **Notifications**: Automated reminders when tasks are overdue or delinquent.
+- **Multi-Pet Expansion**: Full support for varying schedules across multiple animals.
 
 ## Screenshots
 

@@ -208,10 +208,44 @@ python run.py
 
 ### Docker (Planned)
 
-The application is designed to be containerized:
-- SQLite database stored in `/data` volume for persistence
-- Single container deployment
-- Environment variables for configuration
+The application is designed to be containerized for robust deployment across multiple locations:
+- **Persistence**: SQLite database stored in `/data` volume to persist history across container updates.
+- **Remote Access**: Recommended deployment behind **Tailscale** or a **Cloudflare Tunnel** for secure, multi-house access without port forwarding.
+- **Single Source of Truth**: Hosting the container at a primary residence (House 1) allows secondary locations (House 2, mobile) to sync with the same database.
+
+## Distributed Household Architecture (Planned)
+
+To support a "traveling care kit" (e.g., meds moving between houses), the following architecture is proposed:
+
+### 1. Centralized Brain
+- A single Docker instance running at "House 1" acts as the global coordinator.
+- All devices (phones, physical buttons, LED strips) in all houses connect to this central instance via a private mesh network (Tailscale).
+
+### 2. Location Awareness
+- Future `TaskLog` entries will include a `location` field (e.g., "House 1", "House 2", "Mobile") to track where care was provided.
+- Allows for different rule sets or reminders based on the current physical location of the pet.
+
+### 3. Portable Care Kit
+- An ESP32-powered "Smart Care Box" that travels with the pet.
+- Features physical buttons for logging and an LED status indicator that pulses based on the central server's state.
+
+## Hardware Integration (Planned)
+
+The system is designed to bridge the digital and physical worlds for lower friction in the kitchen:
+
+### 1. Physical Buttons (Zigbee/Z-Wave)
+- **Buttons-on-Caps**: Small Zigbee buttons (e.g., Aqara Mini Switch) mounted directly on medication bottle caps for "Tap-to-Log" functionality.
+- **Stationary Hubs**: Multi-button remotes (e.g., IKEA SOMRIG) mounted in the kitchen or on the care box to log feedings and supplements.
+
+### 2. Ambient State Indicators
+- **LED Status Bar**: Addressable LED strips (NeoPixels) that change color based on the pet's current care status:
+  - **Green**: All tasks for the current block are complete.
+  - **Yellow Pulse**: A task is approaching delinquency (e.g., past "ideal time").
+  - **Red**: A task is delinquent and requires immediate attention.
+
+### 3. NFC/QR Fallback
+- NFC stickers on bottles for phone-based logging.
+- QR codes inside the care box lid for guests or sitters to quickly access the web UI without setup.
 
 ## Configuration
 
