@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  care-tracker:
+    build: .
+    container_name: care-tracker
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist the database file to a local data directory
+      - ./data:/data
+    environment:
+      - DATA_DIR=/data
+      - TZ=America/New_York
+    restart: unless-stopped
+
