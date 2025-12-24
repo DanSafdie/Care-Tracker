@@ -5,7 +5,7 @@ services:
     build: .
     container_name: care-tracker
     ports:
-      - "8080:8080"
+      - "8273:8273"
     volumes:
       # Persist the database file to a local data directory
       - ./data:/data

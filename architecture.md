@@ -254,6 +254,6 @@ The system is designed to bridge the digital and physical worlds for lower frict
 | Variable | Default | Description |
 |----------|---------|-------------|
 | HOST | 0.0.0.0 | Server bind address |
-| PORT | 8080 | Server port |
+| PORT | 8273 | Server port |
 | DATA_DIR | /workspace/data | SQLite database location |
 | TZ | America/New_York | Timezone for 4 AM reset |

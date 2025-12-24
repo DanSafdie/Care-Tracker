@@ -15,7 +15,7 @@ if __name__ == "__main__":
     
     # Default settings - bind to all interfaces for LAN access
     host = os.environ.get("HOST", "0.0.0.0")
-    port = int(os.environ.get("PORT", "8080"))
+    port = int(os.environ.get("PORT", "8273"))
     
     print(f"Starting Care-Tracker on http://{host}:{port}")
     print("Access from other devices on your network using your machine's IP address")

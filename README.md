@@ -44,7 +44,7 @@ pip install -r requirements.txt
 # Run the server
 python run.py
 
-# Open in browser: http://localhost:8080
+# Open in browser: http://localhost:8273
 ```
 
 ### Access from Other Devices
