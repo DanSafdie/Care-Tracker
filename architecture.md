@@ -1,0 +1,185 @@
+# Pet Care Tracker - Architecture
+
+## Overview
+
+A household pet care tracking system that enables multiple family members to coordinate care tasks for pets. The system tracks medications, feedings, supplements, and other care items with a complete history log.
+
+## Key Features
+
+- **Multi-user access**: No authentication required for household use on local network
+- **Task tracking**: Mark care items complete, with undo capability (with confirmation)
+- **4 AM day reset**: The "care day" resets at 4 AM, not midnight, to handle late-night care
+- **Full history**: All actions logged with timestamps and optional user identification
+- **Extensible design**: Built to accommodate future rule sets, additional pets, and integrations
+
+## Tech Stack
+
+| Component | Technology | Rationale |
+|-----------|------------|-----------|
+| Backend | Python + FastAPI | Fast async API, easy to extend, great docs |
+| Database | SQLite + SQLAlchemy | Simple file-based DB, no server needed, perfect for local use |
+| Frontend | Jinja2 templates + Vanilla JS | Lightweight, no build step, works everywhere |
+| Server | Uvicorn | Production-ready ASGI server |
+
+## Project Structure
+
+```
+/workspace/
+├── app/
+│   ├── backend/
+│   │   ├── __init__.py
+│   │   ├── main.py          # FastAPI application & routes
+│   │   ├── database.py      # DB connection & session management
+│   │   ├── models.py        # SQLAlchemy ORM models
+│   │   ├── schemas.py       # Pydantic request/response schemas
+│   │   ├── crud.py          # Database operations
+│   │   ├── utils.py         # Utilities (care day calculation, etc.)
+│   │   └── seed_data.py     # Initial data seeding
+│   │
+│   └── frontend/
+│       ├── templates/
+│       │   ├── base.html    # Base template with nav/footer
+│       │   ├── index.html   # Dashboard (today's tasks)
+│       │   └── history.html # History log view
+│       │
+│       └── static/
+│           ├── css/
+│           │   └── style.css
+│           └── js/
+│               └── app.js
+│
+├── data/                     # SQLite database storage
+├── requirements.txt          # Python dependencies
+├── run.py                    # Convenience run script
+└── architecture.md           # This file
+```
+
+## Data Models
+
+### Pet
+Represents a pet in the household.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | int | Primary key |
+| name | string | Pet's name (e.g., "Chessie") |
+| species | string | Type of pet (e.g., "dog") |
+| notes | text | General notes about the pet |
+| is_active | bool | Soft delete flag |
+| created_at | datetime | Record creation time |
+
+### CareItem
+A care task associated with a pet.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | int | Primary key |
+| pet_id | int | Foreign key to Pet |
+| name | string | Task name (e.g., "Denamarin") |
+| description | text | What this item is |
+| notes | text | Timing/dependency info (informational only) |
+| category | string | medication, food, supplement, etc. |
+| display_order | int | UI ordering |
+| is_active | bool | Soft delete flag |
+
+### TaskLog
+Historical record of task completions and undos.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | int | Primary key |
+| care_item_id | int | Foreign key to CareItem |
+| care_day | date | Logical care day (resets at 4 AM) |
+| action | string | 'completed' or 'undone' |
+| completed_by | string | Optional: who did it |
+| timestamp | datetime | When the action occurred |
+| notes | text | Optional notes |
+
+## API Endpoints
+
+### Pets
+- `GET /api/pets` - List all active pets
+- `POST /api/pets` - Create a new pet
+- `GET /api/pets/{id}` - Get specific pet
+
+### Care Items
+- `GET /api/care-items` - List care items (optional `?pet_id=` filter)
+- `POST /api/care-items` - Create a care item
+
+### Tasks
+- `GET /api/status` - Get today's status for all pets/tasks
+- `POST /api/tasks/{id}/complete` - Mark task complete
+- `POST /api/tasks/{id}/undo` - Undo task completion
+
+### History
+- `GET /api/history` - Get task history with optional filters
+
+### System
+- `GET /api/info` - Get system info (care day, version, etc.)
+
+## 4 AM Day Reset Logic
+
+The "care day" does not follow calendar days. Instead:
+- 4:00 AM is the start of a new care day
+- 3:59 AM still belongs to the previous care day
+
+This handles the common scenario where late-night care (before bed) should still count as "today's" tasks.
+
+Example:
+- At 11:30 PM on Jan 1st → care day is Jan 1st
+- At 2:00 AM on Jan 2nd → care day is still Jan 1st
+- At 4:00 AM on Jan 2nd → care day becomes Jan 2nd
+
+## Future Extensions
+
+### Rule Sets (Planned)
+The `notes` field on CareItem currently contains human-readable timing info (e.g., "Give on empty stomach"). Future versions could parse this into enforceable rules:
+- Time-based rules (morning only, with dinner, etc.)
+- Dependency rules (must give X before Y)
+- Interval rules (every 8 hours)
+
+### Home Assistant Integration (Planned)
+The API design supports future integration with Home Assistant for:
+- LED status indicators (green = all done, red = pending)
+- Notifications when tasks are overdue
+- Voice control via Alexa/Google Home
+
+### Multi-Pet Expansion
+The data model already supports multiple pets. Adding a new pet:
+1. Create pet via API
+2. Add care items for that pet
+3. Dashboard automatically shows all active pets
+
+## Running the Application
+
+### Development
+
+```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # or `venv\Scripts\activate` on Windows
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the server
+python run.py
+
+# Access at http://localhost:8000
+```
+
+### Docker (Planned)
+
+The application is designed to be containerized:
+- SQLite database stored in `/data` volume for persistence
+- Single container deployment
+- Environment variables for configuration
+
+## Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| HOST | 0.0.0.0 | Server bind address |
+| PORT | 8000 | Server port |
+| DATA_DIR | /workspace/data | SQLite database location |
+| TZ | America/New_York | Timezone for 4 AM reset |

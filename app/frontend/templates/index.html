@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Pet Care Tracker{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <h1>Today's Care Tasks</h1>
+    <p class="subtitle">{{ care_day.strftime('%A, %B %d, %Y') }}</p>
+
+    {% for pet_data in daily_status %}
+    <section class="pet-section">
+        <h2>{{ pet_data.pet.name }} <span class="pet-species">({{ pet_data.pet.species }})</span></h2>
+        
+        {% if pet_data.pet.notes %}
+        <p class="pet-notes">{{ pet_data.pet.notes }}</p>
+        {% endif %}
+
+        <div class="task-grid">
+            {% for task in pet_data.tasks %}
+            <div class="task-card {% if task.is_completed %}completed{% endif %}" data-care-item-id="{{ task.care_item.id }}">
+                <div class="task-header">
+                    <span class="task-category {{ task.care_item.category or 'other' }}">{{ task.care_item.category or 'other' }}</span>
+                    <span class="task-status">
+                        {% if task.is_completed %}
+                        ✓ Done
+                        {% else %}
+                        ○ Pending
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <h3 class="task-name">{{ task.care_item.name }}</h3>
+                
+                {% if task.care_item.description %}
+                <p class="task-description">{{ task.care_item.description }}</p>
+                {% endif %}
+                
+                {% if task.care_item.notes %}
+                <p class="task-notes">📋 {{ task.care_item.notes }}</p>
+                {% endif %}
+
+                {% if task.is_completed %}
+                <div class="completion-info">
+                    <p>Completed at {{ task.completed_at.strftime('%I:%M %p') if task.completed_at else 'Unknown time' }}</p>
+                    {% if task.completed_by %}
+                    <p>By: {{ task.completed_by }}</p>
+                    {% endif %}
+                </div>
+                <button class="btn btn-undo" onclick="undoTask({{ task.care_item.id }}, '{{ task.care_item.name }}')">
+                    ↩ Undo
+                </button>
+                {% else %}
+                <button class="btn btn-complete" onclick="completeTask({{ task.care_item.id }}, '{{ task.care_item.name }}')">
+                    ✓ Mark Complete
+                </button>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endfor %}
+
+    {% if not daily_status %}
+    <div class="empty-state">
+        <p>No pets or care items configured yet.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirm-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3 id="modal-title">Confirm Action</h3>
+        <p id="modal-message">Are you sure?</p>
+        <div class="modal-buttons">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" id="modal-confirm">Confirm</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Store the care day for the page
+    const careDay = "{{ care_day.isoformat() }}";
+</script>
+{% endblock %}
