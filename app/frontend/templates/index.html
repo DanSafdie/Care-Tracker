@@ -41,7 +41,7 @@
 
                 {% if task.is_completed %}
                 <div class="completion-info">
-                    <p>Completed at {{ task.completed_at.strftime('%I:%M %p') if task.completed_at else 'Unknown time' }}</p>
+                    <p>Completed at {{ task.completed_at | local_time | strftime('%I:%M %p') if task.completed_at else 'Unknown time' }}</p>
                     {% if task.completed_by %}
                     <p>By: {{ task.completed_by }}</p>
                     {% endif %}

@@ -56,3 +56,42 @@ def get_day_boundaries(care_day: date, timezone_str: str = "America/New_York") -
     end = start + timedelta(days=1)
     
     return start, end
+
+
+def to_local_time(dt: datetime, timezone_str: str = "America/New_York") -> datetime:
+    """
+    Convert a datetime (usually UTC from DB) to local time.
+    
+    Args:
+        dt: The datetime to convert. Can be datetime, date, or string.
+        timezone_str: Target timezone. Defaults to Eastern.
+        
+    Returns:
+        Timezone-aware datetime in the target timezone.
+    """
+    if dt is None:
+        return None
+        
+    # Handle string input (sometimes SQLite returns strings)
+    if isinstance(dt, str):
+        try:
+            # Try to parse common ISO formats
+            if 'T' in dt:
+                dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+            else:
+                dt = datetime.strptime(dt, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            return None
+            
+    # Handle date input
+    if isinstance(dt, date) and not isinstance(dt, datetime):
+        dt = datetime.combine(dt, time.min)
+        
+    # If it's already aware, just convert it
+    if dt.tzinfo is not None:
+        return dt.astimezone(pytz.timezone(timezone_str))
+    
+    # If it's naive, assume it's UTC and localize it first
+    utc = pytz.UTC
+    aware_dt = utc.localize(dt)
+    return aware_dt.astimezone(pytz.timezone(timezone_str))

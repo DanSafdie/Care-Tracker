@@ -14,11 +14,12 @@ Features:
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
 from datetime import date, datetime
 from typing import List, Optional
 import os
+import traceback
 
 from database import get_db, init_db
 from models import Pet, CareItem, TaskLog
@@ -29,7 +30,7 @@ from schemas import (
     HistoryEntry
 )
 import crud
-from utils import get_care_day
+from utils import get_care_day, to_local_time
 from seed_data import run_seed
 
 # Create FastAPI app
@@ -39,12 +40,39 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Exception handling middleware for debugging
+@app.middleware("http")
+async def catch_exceptions_middleware(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as exc:
+        print(f"!!! EXCEPTION CAUGHT BY MIDDLEWARE !!!")
+        print(traceback.format_exc())
+        # If it's an API request, return JSON
+        if request.url.path.startswith("/api/"):
+            return JSONResponse(
+                status_code=500,
+                content={"detail": str(exc), "traceback": traceback.format_exc()}
+            )
+        # Otherwise, we'll let it raise so we can see it in the console/logs
+        # but for a production-like feel we could return a 500 HTML page
+        raise exc
+
 # Mount static files (CSS, JS)
 static_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "static")
 templates_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "templates")
 
 app.mount("/static", StaticFiles(directory=static_path), name="static")
 templates = Jinja2Templates(directory=templates_path)
+
+# Add custom Jinja2 filter for timezone conversion
+def jinja_strftime(dt, fmt):
+    if not dt:
+        return ""
+    return dt.strftime(fmt)
+
+templates.env.filters["local_time"] = to_local_time
+templates.env.filters["strftime"] = jinja_strftime
 
 
 # ============== Startup Events ==============
@@ -57,43 +85,79 @@ async def startup_event():
     run_seed()
 
 
+@app.get("/debug")
+async def debug(db: Session = Depends(get_db)):
+    try:
+        pets = crud.get_pets(db)
+        return {
+            "status": "ok",
+            "db_connected": True,
+            "pet_count": len(pets),
+            "time": datetime.now().isoformat(),
+            "care_day": get_care_day().isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
+
+
 # ============== Web UI Routes ==============
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, db: Session = Depends(get_db)):
     """Main dashboard showing today's tasks."""
-    care_day = get_care_day()
-    daily_status = crud.get_daily_summary(db, care_day)
-    
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "care_day": care_day,
-        "daily_status": daily_status,
-        "now": datetime.now()
-    })
+    try:
+        care_day = get_care_day()
+        daily_status = crud.get_daily_summary(db, care_day)
+        now = to_local_time(datetime.utcnow())
+        
+        print(f"DEBUG: Rendering home for care_day={care_day}")
+        
+        return templates.TemplateResponse("index.html", {
+            "request": request,
+            "care_day": care_day,
+            "daily_status": daily_status,
+            "now": now
+        })
+    except Exception as e:
+        print(f"ERROR in home route: {e}")
+        print(traceback.format_exc())
+        raise e
 
 
 @app.get("/history", response_class=HTMLResponse)
 async def history_page(request: Request, db: Session = Depends(get_db)):
     """History page showing past task completions."""
-    history = crud.get_history(db, limit=100)
-    
-    # Enrich with pet/item names
-    history_entries = []
-    for log in history:
-        care_item = crud.get_care_item(db, log.care_item_id)
-        pet = crud.get_pet(db, care_item.pet_id) if care_item else None
-        history_entries.append({
-            "log": log,
-            "pet_name": pet.name if pet else "Unknown",
-            "care_item_name": care_item.name if care_item else "Unknown"
+    try:
+        care_day = get_care_day()
+        history = crud.get_history(db, limit=100)
+        
+        print(f"DEBUG: Rendering history for care_day={care_day}")
+        
+        # Enrich with pet/item names
+        history_entries = []
+        for log in history:
+            care_item = crud.get_care_item(db, log.care_item_id)
+            pet = crud.get_pet(db, care_item.pet_id) if care_item else None
+            history_entries.append({
+                "log": log,
+                "pet_name": pet.name if pet else "Unknown",
+                "care_item_name": care_item.name if care_item else "Unknown"
+            })
+        
+        return templates.TemplateResponse("history.html", {
+            "request": request,
+            "care_day": care_day,
+            "history_entries": history_entries,
+            "now": to_local_time(datetime.utcnow())
         })
-    
-    return templates.TemplateResponse("history.html", {
-        "request": request,
-        "history_entries": history_entries,
-        "now": datetime.now()
-    })
+    except Exception as e:
+        print(f"ERROR in history_page route: {e}")
+        print(traceback.format_exc())
+        raise e
 
 
 # ============== API Routes - Pets ==============
@@ -173,6 +237,7 @@ async def complete_task(
         raise HTTPException(status_code=400, detail="Task already completed for today")
     
     log = crud.complete_task(db, care_item_id, completed_by, notes)
+    print(f"TASK COMPLETED: Item {care_item_id} ({care_item.name}) by {completed_by or 'Unknown'}")
     return {
         "success": True,
         "message": f"{care_item.name} marked as complete",
@@ -201,6 +266,7 @@ async def undo_task(
         raise HTTPException(status_code=400, detail="Task is not completed")
     
     log = crud.undo_task(db, care_item_id, completed_by, notes)
+    print(f"TASK UNDONE: Item {care_item_id} ({care_item.name})")
     return {
         "success": True,
         "message": f"{care_item.name} marked as not complete",
@@ -238,7 +304,7 @@ async def get_info():
     care_day = get_care_day()
     return {
         "care_day": care_day.isoformat(),
-        "current_time": datetime.now().isoformat(),
+        "current_time": to_local_time(datetime.utcnow()).isoformat(),
         "day_reset_hour": 4,
         "version": "1.0.0"
     }

@@ -23,8 +23,8 @@
             <tbody>
                 {% for entry in history_entries %}
                 <tr class="action-{{ entry.log.action }}">
-                    <td>{{ entry.log.care_day.strftime('%Y-%m-%d') }}</td>
-                    <td>{{ entry.log.timestamp.strftime('%I:%M %p') }}</td>
+                    <td>{{ entry.log.care_day.strftime('%Y-%m-%d') if entry.log.care_day else 'Unknown' }}</td>
+                    <td>{{ entry.log.timestamp | local_time | strftime('%I:%M %p') }}</td>
                     <td>{{ entry.pet_name }}</td>
                     <td>{{ entry.care_item_name }}</td>
                     <td>

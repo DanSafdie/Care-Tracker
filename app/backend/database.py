@@ -8,8 +8,15 @@ from sqlalchemy.orm import sessionmaker
 import os
 
 # Database file location - stored in /data for persistence (useful for Docker volumes later)
-DATA_DIR = os.environ.get("DATA_DIR", "/workspace/data")
-DATABASE_URL = f"sqlite:///{DATA_DIR}/pet_care.db"
+# Default to a local data directory relative to this file
+DEFAULT_DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data"))
+DATA_DIR = os.environ.get("DATA_DIR", DEFAULT_DATA_DIR)
+
+# Ensure the directory exists
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR, exist_ok=True)
+
+DATABASE_URL = f"sqlite:///{os.path.join(DATA_DIR, 'pet_care.db')}"
 
 # Create engine with SQLite-specific settings
 engine = create_engine(

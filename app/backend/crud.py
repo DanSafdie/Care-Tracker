@@ -76,7 +76,7 @@ def get_task_status_for_day(db: Session, care_item_id: int, care_day: date) -> b
             TaskLog.care_item_id == care_item_id,
             TaskLog.care_day == care_day
         )
-    ).order_by(desc(TaskLog.timestamp)).first()
+    ).order_by(desc(TaskLog.timestamp), desc(TaskLog.id)).first()
     
     if last_log is None:
         return False
@@ -100,7 +100,7 @@ def get_last_completion_for_day(db: Session, care_item_id: int, care_day: date) 
             TaskLog.care_day == care_day,
             TaskLog.action == "completed"
         )
-    ).order_by(desc(TaskLog.timestamp)).first()
+    ).order_by(desc(TaskLog.timestamp), desc(TaskLog.id)).first()
 
 
 def complete_task(db: Session, care_item_id: int, completed_by: str = None, notes: str = None) -> TaskLog:
@@ -166,7 +166,7 @@ def get_history(
     if care_item_id:
         query = query.filter(TaskLog.care_item_id == care_item_id)
     
-    return query.order_by(desc(TaskLog.timestamp)).limit(limit).all()
+    return query.order_by(desc(TaskLog.timestamp), desc(TaskLog.id)).limit(limit).all()
 
 
 def get_daily_summary(db: Session, care_day: date = None) -> dict:
