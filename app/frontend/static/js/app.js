@@ -106,24 +106,43 @@ async function submitComplete(careItemId, taskName, petId) {
 
 /**
  * Handle logic for prompting timers after task completion
+ * Centralized timer logic for medication/feeding coordination
+ * 
  * @param {string} taskName - The completed task name
  * @param {number} petId - The pet ID
  */
 async function handleTimerPrompts(taskName, petId) {
-    if (taskName === 'Breakfast') {
-        // Check if Denamarin is already completed
-        const denaCard = findTaskCard('Denamarin', petId);
-        const isDenaCompleted = denaCard && denaCard.classList.contains('completed');
-        
+    // Check status of Denamarin and meals
+    const denaCard = findTaskCard('Denamarin', petId);
+    const breakfastCard = findTaskCard('Breakfast', petId);
+    const dinnerCard = findTaskCard('Dinner', petId);
+    
+    const isDenaCompleted = denaCard && denaCard.classList.contains('completed');
+    const isBreakfastCompleted = breakfastCard && breakfastCard.classList.contains('completed');
+    const isDinnerCompleted = dinnerCard && dinnerCard.classList.contains('completed');
+    
+    // === MEAL COMPLETION: Check if we need empty stomach timer for Denamarin ===
+    if (taskName === 'Breakfast' || taskName === 'Dinner') {
+        // Only prompt if Denamarin hasn't been given yet
         if (!isDenaCompleted) {
-            if (confirm('Breakfast complete! Set a 2-hour timer to know when she has an empty stomach for Denamarin?')) {
-                await startTimer(petId, 2, 'Empty stomach for Denamarin');
+            const mealName = taskName.toLowerCase();
+            if (confirm(`${taskName} complete! Set a 2-hour timer to know when she has an empty stomach for Denamarin?`)) {
+                await startTimer(petId, 2, 'Empty stomach');
             }
         }
-    } else if (taskName === 'Denamarin') {
-        if (confirm('Denamarin given! Set a 1-hour timer to know when she can have her next meal?')) {
-            await startTimer(petId, 1, 'Ready for next meal');
+    } 
+    
+    // === DENAMARIN COMPLETION: Check if we need timer for next meal ===
+    else if (taskName === 'Denamarin') {
+        // Only prompt if there's still a meal to come
+        const mealsRemaining = !isBreakfastCompleted || !isDinnerCompleted;
+        
+        if (mealsRemaining) {
+            if (confirm('Denamarin given! Set a 1-hour timer to know when she can have her next meal?')) {
+                await startTimer(petId, 1, 'Next meal ready');
+            }
         }
+        // If both meals are done, no timer needed - she's set for the night!
     }
 }
 

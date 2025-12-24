@@ -120,16 +120,32 @@ Historical record of task completions and undos.
 
 ## Timer Functionality
 
-The system includes a smart timer feature to help manage dependencies between tasks:
+The system includes a smart timer feature to help manage dependencies between tasks, particularly coordinating Denamarin (liver supplement) with meal timing.
 
 ### Features
-- **Triggered by actions**: Completing specific tasks (like Breakfast or Denamarin) prompts the user to set a timer.
-- **Empty stomach tracking**: When Breakfast is completed (and Denamarin is pending), a 2-hour timer can be set.
-- **Post-medication tracking**: When Denamarin is completed, a 1-hour timer can be set to know when the next meal can be given.
-- **Multi-device coordination**: Timer state is stored **server-side** in the database, allowing any household member to see the same timer status regardless of which device they use.
-- **Visual indicators**: A pulsing timer banner appears at the top right of the pet's header when active.
-- **Ready state**: When the timer reaches zero, it displays a "READY!" message with visual emphasis.
-- **Automatic replacement**: Setting a new timer automatically clears any existing timer for that pet.
+- **Intelligent meal-based triggers**: The system intelligently prompts for timers based on task dependencies:
+  - **Breakfast/Dinner → Denamarin**: When either meal is completed and Denamarin is still pending, offers a 2-hour "Empty stomach" timer
+  - **Denamarin → Next Meal**: When Denamarin is completed and meals are still pending, offers a 1-hour "Next meal ready" timer
+  - **Smart skipping**: If Denamarin is completed after both meals are done, NO timer is offered (no meals remaining today)
+- **Multi-device coordination**: Timer state is stored **server-side** in the database, allowing any household member to see the same timer status regardless of which device they use
+- **Visual indicators**: A compact, gradient-styled timer badge appears in the top right of the pet's header when active
+- **Ready state**: When the timer reaches zero, it displays "READY!" with visual emphasis
+- **Automatic replacement**: Setting a new timer automatically clears any existing timer for that pet
+- **Mobile responsive**: Timer wraps gracefully on mobile devices without breaking layout
+
+### Timer Logic (Centralized)
+All timer prompting logic is housed in one function: `handleTimerPrompts()` in `app/frontend/static/js/app.js`
+
+**Decision tree:**
+```
+Meal completed (Breakfast/Dinner):
+  - If Denamarin NOT completed → Offer 2hr timer ("Empty stomach")
+  - If Denamarin already completed → No timer
+
+Denamarin completed:
+  - If ANY meal still pending → Offer 1hr timer ("Next meal ready")
+  - If ALL meals already completed → No timer (no more meals today)
+```
 
 ### Implementation
 - **Backend**: `Pet` model includes `timer_end_time` and `timer_label` fields

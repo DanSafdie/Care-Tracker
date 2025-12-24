@@ -542,69 +542,100 @@ h1 {
 
 /* ============== Timer ============== */
 .pet-timer {
-    background: #e1f5fe;
-    border: 2px solid #03a9f4;
-    border-radius: var(--radius-md);
-    padding: var(--space-sm) var(--space-md);
-    animation: pulse-timer 2s infinite ease-in-out;
+    background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%);
+    border: 1px solid #03a9f4;
+    border-radius: 20px;
+    padding: 6px 12px;
+    box-shadow: 0 2px 4px rgba(3, 169, 244, 0.15);
+    animation: pulse-timer 3s ease-in-out infinite;
+    display: inline-flex;
+    align-items: center;
 }
 
 .pet-timer.timer-ready {
-    background: var(--success-light);
+    background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%);
     border-color: var(--success);
-    animation: pulse-ready 1s infinite ease-in-out;
+    animation: pulse-ready 2s ease-in-out infinite;
 }
 
 @keyframes pulse-timer {
-    0% { border-color: #03a9f4; box-shadow: 0 0 0 0 rgba(3, 169, 244, 0.2); }
-    50% { border-color: #0288d1; box-shadow: 0 0 0 4px rgba(3, 169, 244, 0.1); }
-    100% { border-color: #03a9f4; box-shadow: 0 0 0 0 rgba(3, 169, 244, 0.2); }
+    0%, 100% { 
+        box-shadow: 0 2px 4px rgba(3, 169, 244, 0.15);
+        transform: translateY(0);
+    }
+    50% { 
+        box-shadow: 0 3px 8px rgba(3, 169, 244, 0.25);
+        transform: translateY(-1px);
+    }
 }
 
 @keyframes pulse-ready {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.02); }
-    100% { transform: scale(1); }
+    0%, 100% { 
+        box-shadow: 0 2px 4px rgba(76, 175, 80, 0.2);
+    }
+    50% { 
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.35);
+    }
 }
 
 .timer-content {
     display: flex;
     align-items: center;
-    gap: var(--space-sm);
+    gap: 6px;
     font-weight: 600;
-    color: #0277bd;
-    font-size: 0.9rem;
+    color: #01579b;
+    font-size: 0.8rem;
+    line-height: 1.2;
 }
 
 .timer-icon {
-    font-size: 1.1rem;
+    font-size: 0.95rem;
+    flex-shrink: 0;
 }
 
 .timer-label {
     white-space: nowrap;
+    font-size: 0.75rem;
+    font-weight: 500;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .timer-countdown {
-    font-family: monospace;
-    font-size: 1.1rem;
-    letter-spacing: 0.5px;
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
     white-space: nowrap;
+    flex-shrink: 0;
+    color: #0277bd;
 }
 
 .btn-clear-timer {
-    background: none;
+    background: rgba(255, 255, 255, 0.7);
     border: none;
+    border-radius: 50%;
     color: #0277bd;
     cursor: pointer;
-    font-size: 1.1rem;
-    padding: 0 0 0 var(--space-xs);
-    opacity: 0.6;
-    transition: opacity 0.2s;
+    font-size: 0.75rem;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin-left: 4px;
+    opacity: 0.7;
+    transition: all 0.2s;
     line-height: 1;
+    flex-shrink: 0;
 }
 
 .btn-clear-timer:hover {
     opacity: 1;
+    background: rgba(255, 255, 255, 0.95);
+    transform: scale(1.1);
 }
 
 /* ============== Footer ============== */
@@ -641,28 +672,40 @@ footer {
     .pet-timer {
         width: 100%;
         max-width: 100%;
-        padding: var(--space-xs) var(--space-sm);
+        padding: 8px 10px;
+        border-radius: 16px;
     }
     
     .timer-content {
-        font-size: 0.8rem;
-        gap: var(--space-xs);
+        font-size: 0.75rem;
+        gap: 5px;
         flex-wrap: wrap;
     }
     
     .timer-icon {
-        font-size: 1rem;
+        font-size: 0.9rem;
     }
     
     .timer-label {
-        font-size: 0.8rem;
+        font-size: 0.7rem;
         white-space: normal;
         flex: 1 1 auto;
         min-width: 0;
+        max-width: none;
+        overflow: visible;
+        text-overflow: clip;
+        line-height: 1.3;
     }
     
     .timer-countdown {
-        font-size: 1rem;
+        font-size: 0.9rem;
         flex-shrink: 0;
+        font-weight: 700;
+    }
+    
+    .btn-clear-timer {
+        width: 20px;
+        height: 20px;
+        font-size: 0.8rem;
     }
 }
