@@ -46,7 +46,7 @@ def seed_chessie_data(db: Session):
             pet_id=chessie.id,
             name="Denamarin",
             description="Liver supplement",
-            notes="Give on empty stomach, at least 1 hour before food",
+            notes="Give on empty stomach, at least 1 hour before food, and at least 2 hours after food",
             category="medication",
             display_order=1
         ),

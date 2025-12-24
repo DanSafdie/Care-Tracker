@@ -50,10 +50,10 @@ function showModal(title, message, onConfirm) {
     
     // Set up confirm button
     confirmBtn.onclick = () => {
+        const action = pendingAction;
         closeModal();
-        if (pendingAction) {
-            pendingAction();
-            pendingAction = null;
+        if (action) {
+            action();
         }
     };
     

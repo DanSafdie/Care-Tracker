@@ -27,7 +27,7 @@
         <p>Care Day: {{ care_day.strftime('%A, %B %d, %Y') if care_day else 'Unknown' }} | Day resets at 4:00 AM</p>
     </footer>
 
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/app.js?v={{ now.timestamp() }}"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

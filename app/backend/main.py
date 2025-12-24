@@ -85,80 +85,45 @@ async def startup_event():
     run_seed()
 
 
-@app.get("/debug")
-async def debug(db: Session = Depends(get_db)):
-    try:
-        pets = crud.get_pets(db)
-        return {
-            "status": "ok",
-            "db_connected": True,
-            "pet_count": len(pets),
-            "time": datetime.now().isoformat(),
-            "care_day": get_care_day().isoformat()
-        }
-    except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e),
-            "traceback": traceback.format_exc()
-        }
-
-
 # ============== Web UI Routes ==============
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, db: Session = Depends(get_db)):
     """Main dashboard showing today's tasks."""
-    try:
-        care_day = get_care_day()
-        daily_status = crud.get_daily_summary(db, care_day)
-        now = to_local_time(datetime.utcnow())
-        
-        print(f"DEBUG: Rendering home for care_day={care_day}")
-        
-        return templates.TemplateResponse("index.html", {
-            "request": request,
-            "care_day": care_day,
-            "daily_status": daily_status,
-            "now": now
-        })
-    except Exception as e:
-        print(f"ERROR in home route: {e}")
-        print(traceback.format_exc())
-        raise e
+    care_day = get_care_day()
+    daily_status = crud.get_daily_summary(db, care_day)
+    
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "care_day": care_day,
+        "daily_status": daily_status,
+        "now": to_local_time(datetime.utcnow())
+    })
 
 
 @app.get("/history", response_class=HTMLResponse)
 async def history_page(request: Request, db: Session = Depends(get_db)):
     """History page showing past task completions."""
-    try:
-        care_day = get_care_day()
-        history = crud.get_history(db, limit=100)
-        
-        print(f"DEBUG: Rendering history for care_day={care_day}")
-        
-        # Enrich with pet/item names
-        history_entries = []
-        for log in history:
-            care_item = crud.get_care_item(db, log.care_item_id)
-            pet = crud.get_pet(db, care_item.pet_id) if care_item else None
-            history_entries.append({
-                "log": log,
-                "pet_name": pet.name if pet else "Unknown",
-                "care_item_name": care_item.name if care_item else "Unknown"
-            })
-        
-        return templates.TemplateResponse("history.html", {
-            "request": request,
-            "care_day": care_day,
-            "history_entries": history_entries,
-            "now": to_local_time(datetime.utcnow())
+    care_day = get_care_day()
+    history = crud.get_history(db, limit=100)
+    
+    # Enrich with pet/item names
+    history_entries = []
+    for log in history:
+        care_item = crud.get_care_item(db, log.care_item_id)
+        pet = crud.get_pet(db, care_item.pet_id) if care_item else None
+        history_entries.append({
+            "log": log,
+            "pet_name": pet.name if pet else "Unknown",
+            "care_item_name": care_item.name if care_item else "Unknown"
         })
-    except Exception as e:
-        print(f"ERROR in history_page route: {e}")
-        print(traceback.format_exc())
-        raise e
-
+    
+    return templates.TemplateResponse("history.html", {
+        "request": request,
+        "care_day": care_day,
+        "history_entries": history_entries,
+        "now": to_local_time(datetime.utcnow())
+    })
 
 # ============== API Routes - Pets ==============
 
