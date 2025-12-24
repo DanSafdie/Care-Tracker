@@ -3,9 +3,9 @@ CRUD (Create, Read, Update, Delete) operations for Pet Care Tracker.
 Database operations separated from API routes for cleaner code.
 """
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, desc
-from datetime import date, datetime
-from typing import List, Optional
+from sqlalchemy import and_, desc, asc
+from datetime import date, datetime, timedelta
+from typing import List, Optional, Dict, Any
 
 from models import Pet, CareItem, TaskLog
 from schemas import PetCreate, CareItemCreate
@@ -167,6 +167,109 @@ def get_history(
         query = query.filter(TaskLog.care_item_id == care_item_id)
     
     return query.order_by(desc(TaskLog.timestamp), desc(TaskLog.id)).limit(limit).all()
+
+
+def get_grid_history(db: Session, page: int = 1, page_size: int = 30) -> Dict[str, Any]:
+    """
+    Get history in a grid-friendly format for the UI.
+    Rows: Dates (most recent first)
+    Columns: Active Care Items
+    
+    Args:
+        db: Database session
+        page: Page number (1-indexed)
+        page_size: Number of days per page
+        
+    Returns:
+        Dict containing columns (items), rows (dates and statuses), and pagination info
+    """
+    today = get_care_day()
+    start_offset = (page - 1) * page_size
+    
+    # Generate the dates for this page
+    dates = []
+    for i in range(page_size):
+        target_date = today - timedelta(days=start_offset + i)
+        dates.append(target_date)
+        
+    # Get all active care items to serve as columns, ordered by pet then display_order
+    pets = get_pets(db)
+    columns = []
+    for pet in pets:
+        items = get_care_items(db, pet_id=pet.id)
+        for item in items:
+            columns.append({
+                "id": item.id,
+                "name": item.name,
+                "pet_name": pet.name,
+                "created_at": item.created_at
+            })
+            
+    if not columns:
+        return {"columns": [], "rows": [], "page": page, "has_next": False}
+
+    # Fetch all logs for the date range and the items we care about
+    min_date = dates[-1]
+    max_date = dates[0]
+    
+    logs = db.query(TaskLog).filter(
+        and_(
+            TaskLog.care_day >= min_date,
+            TaskLog.care_day <= max_date
+        )
+    ).order_by(asc(TaskLog.timestamp), asc(TaskLog.id)).all()
+    
+    # Organize logs by (date, care_item_id) - last status wins
+    status_map = {}
+    for log in logs:
+        status_map[(log.care_day, log.care_item_id)] = log.action == "completed"
+
+    # Build the rows
+    rows = []
+    for d in dates:
+        row_items = {}
+        for col in columns:
+            is_completed = status_map.get((d, col["id"]), False)
+            
+            # Simplified check: if date is before item was created, it's not applicable
+            # We use get_care_day on created_at for consistency
+            item_start_date = get_care_day(col["created_at"])
+            
+            if d < item_start_date:
+                status = "n/a"
+            elif is_completed:
+                status = "given"
+            else:
+                status = "missed"
+                
+            row_items[col["id"]] = status
+            
+        rows.append({
+            "date": d,
+            "column_values": row_items
+        })
+        
+    # Check if there's history older than our current range for 'has_next'
+    oldest_log = db.query(TaskLog).order_by(asc(TaskLog.care_day)).first()
+    has_next = False
+    if oldest_log and oldest_log.care_day < min_date:
+        has_next = True
+    elif not oldest_log:
+        # If no logs, maybe check pet creation dates? 
+        # For now, let's just say has_next is true if the next page of dates
+        # would still be after the oldest pet's creation date.
+        first_pet = db.query(Pet).order_by(asc(Pet.created_at)).first()
+        if first_pet and get_care_day(first_pet.created_at) < min_date:
+            has_next = True
+
+    return {
+        "columns": columns,
+        "rows": rows,
+        "page": page,
+        "page_size": page_size,
+        "has_next": has_next,
+        "has_prev": page > 1
+    }
 
 
 def get_daily_summary(db: Session, care_day: date = None) -> dict:

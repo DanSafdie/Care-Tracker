@@ -102,28 +102,53 @@ async def home(request: Request, db: Session = Depends(get_db)):
 
 
 @app.get("/history", response_class=HTMLResponse)
-async def history_page(request: Request, db: Session = Depends(get_db)):
+async def history_page(
+    request: Request, 
+    view: str = "grid", 
+    page: int = 1, 
+    db: Session = Depends(get_db)
+):
     """History page showing past task completions."""
     care_day = get_care_day()
-    history = crud.get_history(db, limit=100)
     
-    # Enrich with pet/item names
-    history_entries = []
-    for log in history:
-        care_item = crud.get_care_item(db, log.care_item_id)
-        pet = crud.get_pet(db, care_item.pet_id) if care_item else None
-        history_entries.append({
-            "log": log,
-            "pet_name": pet.name if pet else "Unknown",
-            "care_item_name": care_item.name if care_item else "Unknown"
+    if view == "grid":
+        grid_data = crud.get_grid_history(db, page=page, page_size=30)
+        return templates.TemplateResponse("history.html", {
+            "request": request,
+            "view": view,
+            "grid_data": grid_data,
+            "care_day": care_day,
+            "now": to_local_time(datetime.utcnow())
         })
-    
-    return templates.TemplateResponse("history.html", {
-        "request": request,
-        "care_day": care_day,
-        "history_entries": history_entries,
-        "now": to_local_time(datetime.utcnow())
-    })
+    else:
+        # List view (existing logic)
+        history = crud.get_history(db, limit=100)
+        
+        # Enrich with pet/item names
+        history_entries = []
+        for log in history:
+            care_item = crud.get_care_item(db, log.care_item_id)
+            pet = crud.get_pet(db, care_item.pet_id) if care_item else None
+            history_entries.append({
+                "log": log,
+                "pet_name": pet.name if pet else "Unknown",
+                "care_item_name": care_item.name if care_item else "Unknown"
+            })
+        
+        return templates.TemplateResponse("history.html", {
+            "request": request,
+            "view": view,
+            "care_day": care_day,
+            "history_entries": history_entries,
+            "now": to_local_time(datetime.utcnow())
+        })
+
+
+@app.get("/api/history/grid")
+async def get_grid_history_api(page: int = 1, page_size: int = 30, db: Session = Depends(get_db)):
+    """API endpoint for grid history data."""
+    return crud.get_grid_history(db, page=page, page_size=page_size)
+
 
 # ============== API Routes - Pets ==============
 

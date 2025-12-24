@@ -5,8 +5,67 @@
 {% block content %}
 <div class="history-page">
     <h1>Care History</h1>
-    <p class="subtitle">Recent task completions and changes</p>
+    <p class="subtitle">Track and review past care tasks</p>
 
+    <div class="tabs-container">
+        <a href="{{ url_for('history_page') }}?view=grid" class="tab-link {{ 'active' if view == 'grid' or not view else '' }}">Grid View</a>
+        <a href="{{ url_for('history_page') }}?view=list" class="tab-link {{ 'active' if view == 'list' else '' }}">List View</a>
+    </div>
+
+    {% if view == 'grid' %}
+    <div class="grid-table-container">
+        <table class="grid-table">
+            <thead>
+                <tr>
+                    <th class="date-col">Date</th>
+                    {% for col in grid_data.columns %}
+                    <th title="{{ col.pet_name }}: {{ col.name }}">
+                        <span class="pet-name">{{ col.pet_name }}</span>
+                        {{ col.name }}
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in grid_data.rows %}
+                <tr>
+                    <td class="date-col">
+                        {{ row.date.strftime('%a, %b %d') }}
+                        {% if row.date == care_day %}
+                        <span class="today-badge">(Today)</span>
+                        {% endif %}
+                    </td>
+                    {% for col in grid_data.columns %}
+                    {% set status = row.column_values[col.id] %}
+                    <td>
+                        {% if status == 'given' %}
+                        <span class="grid-status given" title="Given">✓</span>
+                        {% elif status == 'missed' %}
+                        <span class="grid-status missed" title="Missed">✕</span>
+                        {% else %}
+                        <span class="grid-status na" title="Not Applicable">—</span>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if not grid_data.rows %}
+        <div class="empty-state">
+            <p>No history available for this period.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="pagination">
+        <a href="?view=grid&page={{ grid_data.page - 1 }}" class="btn-pagination {{ 'disabled' if not grid_data.has_prev else '' }}">← Newer</a>
+        <span class="page-info">Page {{ grid_data.page }}</span>
+        <a href="?view=grid&page={{ grid_data.page + 1 }}" class="btn-pagination {{ 'disabled' if not grid_data.has_next else '' }}">Older →</a>
+    </div>
+
+    {% else %}
     <div class="history-table-container">
         <table class="history-table">
             <thead>
@@ -49,5 +108,6 @@
         </div>
         {% endif %}
     </div>
+    {% endif %}
 </div>
 {% endblock %}
