@@ -245,6 +245,54 @@ The system is designed to bridge the digital and physical worlds for lower frict
   - **Yellow Pulse**: A task is approaching delinquency (e.g., past "ideal time").
   - **Red**: A task is delinquent and requires immediate attention.
 
+#### Inovelli Z-Wave Dimmer LED Configuration (Reference)
+
+The following configuration values work with Inovelli Red Series Z-Wave dimmers. Note that specific firmware versions require **split parameters (bitmasks)** instead of a single bulk value. These were validated on the **Downstairs Spotlight** switch.
+
+**Target Entity:** `light.downstairs_spotlights`
+**Z-Wave Service:** `zwave_js.set_config_parameter`
+
+| Function | Parameter | Bitmask | Description |
+|----------|-----------|---------|-------------|
+| **Color** | 16 | 255 | 0-255 (scaled hue) |
+| **Brightness** | 16 | 65280 | 0-10 (intensity) |
+| **Duration** | 16 | 16711680 | 0-255 (255 = indefinite) |
+| **Effect Type**| 16 | 2130706432 | 0=Off, 1=Solid, 4=Pulse |
+
+**Common Presets:**
+| State | Color (255) | Type (2130706432) |
+|-------|-------|------|
+| Blue Pulse | 170 | 4 |
+| Yellow Solid | 42 | 1 |
+| Yellow Pulse | 42 | 4 |
+| Purple Solid | 191 | 1 |
+| Purple Pulse | 191 | 4 |
+| Green Solid | 85 | 1 |
+| Red Pulse | 0 | 4 |
+
+**Example HA Script (Solid Green):**
+```yaml
+downstairs_spotlight_led_green_solid:
+  alias: "Downstairs Spotlight LED - Green Solid"
+  sequence:
+    - action: zwave_js.set_config_parameter
+      target:
+        entity_id: light.downstairs_spotlights
+      data:
+        parameter: 16
+        bitmask: 2130706432
+        value: 1 # 1 = Solid
+    - action: zwave_js.set_config_parameter
+      target:
+        entity_id: light.downstairs_spotlights
+      data:
+        parameter: 16
+        bitmask: 255
+        value: 85 # 85 = Green
+```
+
+**Note:** These scripts are available in the HA config at `config/scripts.yaml` using the nomenclature `downstairs_spotlight_led_[color_effect]`. To stop any effect, set the **Effect Type** bitmask to `0`.
+
 ### 3. NFC/QR Fallback
 - NFC stickers on bottles for phone-based logging.
 - QR codes inside the care box lid for guests or sitters to quickly access the web UI without setup.
