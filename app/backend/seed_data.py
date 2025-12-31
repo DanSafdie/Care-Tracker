@@ -44,27 +44,11 @@ def seed_chessie_data(db: Session):
     care_items = [
         CareItem(
             pet_id=chessie.id,
-            name="Denamarin",
-            description="Liver supplement",
-            notes="Give on empty stomach, at least 1 hour before food, and at least 2 hours after food",
-            category="medication",
-            display_order=1
-        ),
-        CareItem(
-            pet_id=chessie.id,
-            name="Ursodiol",
-            description="Liver medication (ursodeoxycholic acid)",
-            notes="Give with food",
-            category="medication",
-            display_order=2
-        ),
-        CareItem(
-            pet_id=chessie.id,
             name="Fish Oil",
             description="Omega fatty acid supplement for coat and joints",
             notes="Give with food",
             category="supplement",
-            display_order=3
+            display_order=1
         ),
         CareItem(
             pet_id=chessie.id,
@@ -72,15 +56,15 @@ def seed_chessie_data(db: Session):
             description="Morning meal",
             notes="",
             category="food",
-            display_order=4
+            display_order=2
         ),
         CareItem(
             pet_id=chessie.id,
-            name="Dinner",
-            description="Evening meal",
-            notes="",
-            category="food",
-            display_order=5
+            name="Ursodiol",
+            description="Liver medication (ursodeoxycholic acid)",
+            notes="Give with food",
+            category="medication",
+            display_order=3
         ),
         CareItem(
             pet_id=chessie.id,
@@ -88,6 +72,22 @@ def seed_chessie_data(db: Session):
             description="Joint supplement (glucosamine/chondroitin)",
             notes="Give with food",
             category="supplement",
+            display_order=4
+        ),
+        CareItem(
+            pet_id=chessie.id,
+            name="Denamarin",
+            description="Liver supplement",
+            notes="Give on empty stomach, at least 1 hour before food, and at least 2 hours after food",
+            category="medication",
+            display_order=5
+        ),
+        CareItem(
+            pet_id=chessie.id,
+            name="Dinner",
+            description="Evening meal",
+            notes="",
+            category="food",
             display_order=6
         ),
     ]
