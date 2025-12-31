@@ -47,6 +47,15 @@ python run.py
 # Open in browser: http://localhost:8273
 ```
 
+### Running Tests
+
+To run the automated test suite (checks API, core logic, and page loading):
+
+```bash
+# Run all tests
+python run.py --test
+```
+
 ### Access from Other Devices
 
 The server binds to `0.0.0.0` by default, making it accessible from other devices on your network. Find your machine's IP address and access `http://YOUR_IP:8080`.
@@ -64,6 +73,7 @@ The server binds to `0.0.0.0` by default, making it accessible from other device
 │       ├── templates/    # HTML templates
 │       └── static/       # CSS and JavaScript
 ├── data/                 # SQLite database
+├── tests/                # Pytest test suite
 ├── requirements.txt      # Python dependencies
 ├── run.py               # Convenience run script
 └── architecture.md      # Detailed architecture docs

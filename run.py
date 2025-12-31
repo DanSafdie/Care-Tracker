@@ -12,19 +12,30 @@ sys.path.insert(0, backend_path)
 
 if __name__ == "__main__":
     import uvicorn
+    import argparse
+    import subprocess
     
-    # Default settings - bind to all interfaces for LAN access
-    host = os.environ.get("HOST", "0.0.0.0")
-    port = int(os.environ.get("PORT", "8273"))
+    parser = argparse.ArgumentParser(description="Run Care-Tracker server or tests.")
+    parser.add_argument("--test", action="store_true", help="Run the test suite")
+    parser.add_argument("--host", default=os.environ.get("HOST", "0.0.0.0"), help="Host to bind to")
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8273")), help="Port to bind to")
     
-    print(f"Starting Care-Tracker on http://{host}:{port}")
+    args = parser.parse_args()
+
+    if args.test:
+        print("Running test suite...")
+        # Use the current python interpreter to run pytest
+        result = subprocess.call([sys.executable, "-m", "pytest"])
+        sys.exit(result)
+    
+    print(f"Starting Care-Tracker on http://{args.host}:{args.port}")
     print("Access from other devices on your network using your machine's IP address")
     print("Press Ctrl+C to stop\n")
     
     uvicorn.run(
         "main:app",
-        host=host,
-        port=port,
+        host=args.host,
+        port=args.port,
         reload=True,
         reload_dirs=[backend_path]
     )

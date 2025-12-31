@@ -20,6 +20,7 @@ A household pet care tracking system that enables multiple family members to coo
 | Backend | Python + FastAPI | Fast async API, easy to extend, great docs |
 | Database | SQLite + SQLAlchemy | Simple file-based DB, no server needed, perfect for local use |
 | Frontend | Jinja2 templates + Vanilla JS | Lightweight, no build step, works everywhere |
+| Testing | Pytest | Fast, simple test runner for API and core logic |
 | Server | Uvicorn | Production-ready ASGI server |
 
 ## Project Structure
@@ -50,6 +51,10 @@ A household pet care tracking system that enables multiple family members to coo
 │               └── app.js
 │
 ├── data/                     # SQLite database storage
+├── tests/                    # Test suite
+│   ├── conftest.py          # Test configuration & fixtures
+│   ├── test_core_logic.py   # Business logic tests
+│   └── ...
 ├── requirements.txt          # Python dependencies
 ├── run.py                    # Convenience run script
 ├── Dockerfile                # Docker image definition
@@ -204,6 +209,9 @@ pip install -r requirements.txt
 
 # Run the server
 python run.py
+
+# Run Tests
+python run.py --test
 
 # Access at http://localhost:8080
 ```
