@@ -59,6 +59,11 @@ class UserResponse(UserBase):
         from_attributes = True
 
 
+class CheckInResponse(BaseModel):
+    user: UserResponse
+    is_new: bool
+
+
 # ============== CareItem Schemas ==============
 
 class CareItemBase(BaseModel):

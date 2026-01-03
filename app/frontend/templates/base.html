@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Care-Tracker{% endblock %}</title>
     <link rel="stylesheet" href="/static/css/style.css?v={{ now.timestamp() }}">
-    <!-- Auto-refresh every 60 seconds to keep status current -->
-    <meta http-equiv="refresh" content="60">
 </head>
 <body>
     <header>
@@ -32,14 +30,46 @@
     <!-- Global User Identity Modal -->
     <div id="user-modal" class="modal" style="display: none;">
         <div class="modal-content">
-            <h3>Hey friend, what should we call you?</h3>
-            <p>This helps us keep track of who's helping out today!</p>
-            <div class="search-container">
-                <input type="text" id="user-search-input" placeholder="First & Last Name" autocomplete="off">
-                <div id="user-results" class="search-results"></div>
+            <!-- Step 1: Name -->
+            <div id="user-step-name">
+                <h3>Hey friend, what should we call you?</h3>
+                <p>This helps us keep track of who's caring for the pets today!</p>
+                <div class="search-container">
+                    <input type="text" id="user-search-input" placeholder="First & Last Name" autocomplete="off">
+                    <div id="user-results" class="search-results"></div>
+                </div>
+                <div class="modal-buttons">
+                    <button class="btn btn-primary" onclick="confirmUser()">Confirm Name</button>
+                </div>
             </div>
-            <div class="modal-buttons">
-                <button class="btn btn-primary" onclick="confirmUser()">Confirm</button>
+
+            <!-- Step 2: Alerts (Onboarding) -->
+            <div id="user-step-alerts" style="display: none;">
+                <h3>Welcome, <span id="onboarding-welcome-name"></span>! 🐾</h3>
+                <p>Would you like to receive text alerts for pet care?</p>
+                
+                <div class="onboarding-benefits" style="text-align: left; background: #f0f7ff; padding: 12px; border-radius: 8px; margin: 15px 0; font-size: 0.9rem;">
+                    <ul style="margin: 0; padding-left: 20px;">
+                        <li>⏰ Timer alerts (meds/feeding)</li>
+                        <li>🌙 9 PM nightly summaries</li>
+                    </ul>
+                </div>
+
+                <div class="form-group" style="text-align: left; margin-bottom: 15px;">
+                    <label for="onboarding-phone" style="display: block; font-weight: 600; margin-bottom: 5px;">Phone Number</label>
+                    <input type="tel" id="onboarding-phone" placeholder="+15551234567" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                </div>
+
+                <div class="form-group" style="text-align: left; margin-bottom: 20px;">
+                    <label for="onboarding-expiry" style="display: block; font-weight: 600; margin-bottom: 5px;">Visiting Helper? (Optional Expiry)</label>
+                    <input type="date" id="onboarding-expiry" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                    <p style="font-size: 0.75rem; color: #666; margin-top: 4px;">Alerts will automatically stop after this date. Leave blank for permanent household members.</p>
+                </div>
+
+                <div class="modal-buttons" style="flex-direction: column; gap: 10px;">
+                    <button class="btn btn-primary" onclick="submitOnboardingAlerts(true)" style="width: 100%;">Yes, Enable Alerts</button>
+                    <button class="btn btn-secondary" onclick="submitOnboardingAlerts(false)" style="width: 100%; background: #f8f9fa; color: #666; border: 1px solid #ddd;">No Alerts, Just Skip</button>
+                </div>
             </div>
         </div>
     </div>

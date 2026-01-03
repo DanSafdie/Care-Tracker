@@ -60,6 +60,7 @@ function selectUser(name) {
  */
 async function confirmUser() {
     const name = document.getElementById('user-search-input').value.trim();
+
     if (name) {
         try {
             // Register/check-in with the backend immediately
@@ -72,9 +73,19 @@ async function confirmUser() {
             });
             
             if (response.ok) {
+                const data = await response.json();
                 localStorage.setItem('care_tracker_user', name);
-                closeUserModal();
-                updateUserDisplay();
+                localStorage.setItem('care_tracker_user_id', data.user.id);
+                
+                if (data.is_new) {
+                    // Show Step 2: Alerts in the modal
+                    document.getElementById('user-step-name').style.display = 'none';
+                    document.getElementById('user-step-alerts').style.display = 'block';
+                    document.getElementById('onboarding-welcome-name').textContent = name;
+                } else {
+                    closeUserModal();
+                    updateUserDisplay();
+                }
             } else {
                 const error = await response.json();
                 alert(`Error: ${error.detail || 'Failed to register user'}`);
@@ -89,11 +100,64 @@ async function confirmUser() {
 }
 
 /**
- * Close the user modal
+ * Submit onboarding alert preferences from the modal
+ */
+async function submitOnboardingAlerts(enable) {
+    const userId = localStorage.getItem('care_tracker_user_id');
+    if (!userId) {
+        closeUserModal();
+        return;
+    }
+
+    if (!enable) {
+        // Just finish onboarding
+        closeUserModal();
+        updateUserDisplay();
+        return;
+    }
+
+    const phone = document.getElementById('onboarding-phone').value.trim();
+    const expiry = document.getElementById('onboarding-expiry').value || null;
+
+    if (!phone) {
+        alert('Please enter a phone number to enable alerts.');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/users/${userId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                wants_alerts: true,
+                phone_number: phone,
+                alert_expiry_date: expiry
+            })
+        });
+
+        if (response.ok) {
+            closeUserModal();
+            updateUserDisplay();
+        } else {
+            const err = await response.json();
+            alert(`Error: ${err.detail || 'Failed to save alert settings'}`);
+        }
+    } catch (err) {
+        console.error('Error saving onboarding alerts:', err);
+        alert('Network error. Please try again.');
+    }
+}
+
+/**
+ * Close the user modal and reset steps
  */
 function closeUserModal() {
     document.getElementById('user-modal').style.display = 'none';
     document.getElementById('user-results').innerHTML = '';
+    
+    // Reset steps for next time
+    document.getElementById('user-step-name').style.display = 'block';
+    document.getElementById('user-step-alerts').style.display = 'none';
 }
 
 /**
@@ -487,6 +551,33 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+/**
+ * Periodically refresh the dashboard to keep status current,
+ * but only if the user isn't currently interacting with a modal or settings.
+ */
+function setupAutoRefresh() {
+    setInterval(() => {
+        // 1. Only refresh on the Dashboard
+        if (window.location.pathname !== '/') return;
+
+        // 2. Don't refresh if a modal is open
+        const userModal = document.getElementById('user-modal');
+        const confirmModal = document.getElementById('confirm-modal');
+        
+        const isUserModalOpen = userModal && userModal.style.display === 'flex';
+        const isConfirmModalOpen = confirmModal && confirmModal.style.display === 'flex';
+
+        if (isUserModalOpen || isConfirmModalOpen) {
+            console.log('Auto-refresh skipped: Modal is open');
+            return;
+        }
+
+        // All clear, refresh the dashboard data
+        console.log('Auto-refreshing dashboard...');
+        location.reload();
+    }, 60000); // Every 60 seconds
+}
+
 // Initialize on load
 window.addEventListener('load', () => {
     console.log('Care-Tracker loaded');
@@ -495,4 +586,5 @@ window.addEventListener('load', () => {
         showUserModal();
     }
     checkTimers();
+    setupAutoRefresh();
 });

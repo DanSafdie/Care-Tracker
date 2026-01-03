@@ -78,20 +78,37 @@ def get_user_by_name(db: Session, name: str) -> Optional[User]:
     return db.query(User).filter(User.name == name).first()
 
 
-def get_or_create_user(db: Session, name: str) -> User:
+def get_or_create_user(
+    db: Session, 
+    name: str, 
+    phone_number: str = None, 
+    wants_alerts: bool = False
+) -> tuple[User, bool]:
     """Get an existing user or create a new one."""
     db_user = get_user_by_name(db, name)
+    is_new = False
     if not db_user:
-        db_user = User(name=name)
+        db_user = User(
+            name=name, 
+            phone_number=phone_number,
+            wants_alerts=wants_alerts
+        )
         db.add(db_user)
         db.commit()
         db.refresh(db_user)
+        is_new = True
     else:
         # Update last_seen
         db_user.last_seen = datetime.now()
+        # Only update phone/alerts if they were provided in this call (onboarding flow)
+        if phone_number is not None:
+            db_user.phone_number = phone_number
+        if wants_alerts:
+            db_user.wants_alerts = wants_alerts
+            
         db.commit()
         db.refresh(db_user)
-    return db_user
+    return db_user, is_new
 
 
 def update_user(db: Session, user_id: int, user_update: UserUpdate) -> Optional[User]:

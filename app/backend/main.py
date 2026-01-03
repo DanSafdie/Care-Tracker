@@ -28,7 +28,8 @@ from schemas import (
     PetResponse, PetCreate,
     CareItemResponse, CareItemCreate,
     TaskLogResponse, TaskStatus, DailyStatus,
-    HistoryEntry, UserResponse, UserCreate, UserUpdate
+    HistoryEntry, UserResponse, UserCreate, UserUpdate,
+    CheckInResponse
 )
 import crud
 from utils import get_care_day, to_local_time
@@ -314,10 +315,16 @@ async def search_users(q: str = "", db: Session = Depends(get_db)):
     return crud.search_users(db, q)
 
 
-@app.post("/api/users/check-in", response_model=UserResponse)
+@app.post("/api/users/check-in", response_model=CheckInResponse)
 async def check_in_user(user: UserCreate, db: Session = Depends(get_db)):
     """Register or update a user's presence."""
-    return crud.get_or_create_user(db, user.name)
+    db_user, is_new = crud.get_or_create_user(
+        db, 
+        user.name, 
+        phone_number=user.phone_number,
+        wants_alerts=user.wants_alerts
+    )
+    return {"user": db_user, "is_new": is_new}
 
 
 @app.get("/api/users/by-name/{name}", response_model=UserResponse)
