@@ -20,18 +20,20 @@ from datetime import date, datetime
 from typing import List, Optional
 import os
 import traceback
+from apscheduler.schedulers.background import BackgroundScheduler
 
-from database import get_db, init_db
-from models import Pet, CareItem, TaskLog
+from database import get_db, init_db, SessionLocal
+from models import Pet, CareItem, TaskLog, User
 from schemas import (
     PetResponse, PetCreate,
     CareItemResponse, CareItemCreate,
     TaskLogResponse, TaskStatus, DailyStatus,
-    HistoryEntry, UserResponse, UserCreate
+    HistoryEntry, UserResponse, UserCreate, UserUpdate
 )
 import crud
 from utils import get_care_day, to_local_time
 from seed_data import run_seed
+from sms_utils import send_sms
 
 # Create FastAPI app
 app = FastAPI(
@@ -77,12 +79,109 @@ templates.env.filters["strftime"] = jinja_strftime
 
 # ============== Startup Events ==============
 
+# ============== Scheduler Setup ==============
+
+scheduler = BackgroundScheduler()
+
+def check_timers_job():
+    """Poll for expired timers and send SMS alerts."""
+    db = SessionLocal()
+    try:
+        now = datetime.now()
+        # Find pets with expired timers
+        expired_pets = db.query(Pet).filter(
+            Pet.timer_end_time != None,
+            Pet.timer_end_time <= now
+        ).all()
+        
+        if not expired_pets:
+            return
+            
+        # Get users who should receive alerts
+        users = db.query(User).filter(
+            User.wants_alerts == True,
+            User.phone_number != None,
+            (User.alert_expiry_date == None) | (User.alert_expiry_date >= get_care_day())
+        ).all()
+        
+        if not users:
+            # Still clear the timers so they don't stay "expired" forever
+            for pet in expired_pets:
+                pet.timer_end_time = None
+                pet.timer_label = None
+            db.commit()
+            return
+
+        for pet in expired_pets:
+            message = f"⏰ Timer for {pet.name} ({pet.timer_label}) has run out!"
+            for user in users:
+                send_sms(user.phone_number, message)
+            
+            # Clear the timer so it doesn't alert again
+            pet.timer_end_time = None
+            pet.timer_label = None
+        
+        db.commit()
+    except Exception as e:
+        print(f"Error in check_timers_job: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
+def nightly_reminder_job():
+    """Send a summary of incomplete tasks at 9 PM."""
+    db = SessionLocal()
+    try:
+        # Get users who should receive alerts
+        users = db.query(User).filter(
+            User.wants_alerts == True,
+            User.phone_number != None,
+            (User.alert_expiry_date == None) | (User.alert_expiry_date >= get_care_day())
+        ).all()
+        
+        if not users:
+            return
+
+        # Get daily summary
+        care_day = get_care_day()
+        summary = crud.get_daily_summary(db, care_day)
+        
+        incomplete_tasks = []
+        for pet_data in summary:
+            pet_name = pet_data['pet'].name
+            pending = [t['care_item'].name for t in pet_data['tasks'] if not t['is_completed']]
+            if pending:
+                incomplete_tasks.append(f"{pet_name}: {', '.join(pending)}")
+        
+        if not incomplete_tasks:
+            # Everything done! (Maybe send a "Good job" text? Plan doesn't specify, so let's skip for now to save Twilio credits)
+            return
+
+        message = "🌙 Nightly Reminder - Still to do:\n" + "\n".join(incomplete_tasks)
+        for user in users:
+            send_sms(user.phone_number, message)
+            
+    except Exception as e:
+        print(f"Error in nightly_reminder_job: {e}")
+    finally:
+        db.close()
+
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize database and seed data on startup."""
     init_db()
     # Run seed to ensure Chessie exists
     run_seed()
+    
+    # Start scheduler
+    if not scheduler.running:
+        scheduler.add_job(check_timers_job, 'interval', minutes=1, id='check_timers')
+        # Nightly reminder at 9 PM (21:00)
+        scheduler.add_job(nightly_reminder_job, 'cron', hour=21, minute=0, id='nightly_reminder')
+        scheduler.start()
+        print("Background scheduler started.")
 
 
 # ============== Web UI Routes ==============
@@ -142,6 +241,17 @@ async def history_page(
             "history_entries": history_entries,
             "now": to_local_time(datetime.utcnow())
         })
+
+
+@app.get("/account", response_class=HTMLResponse)
+async def account_page(request: Request):
+    """Render the account management page."""
+    care_day = get_care_day()
+    return templates.TemplateResponse("account.html", {
+        "request": request,
+        "care_day": care_day,
+        "now": to_local_time(datetime.utcnow())
+    })
 
 
 @app.get("/api/history/grid")
@@ -208,6 +318,24 @@ async def search_users(q: str = "", db: Session = Depends(get_db)):
 async def check_in_user(user: UserCreate, db: Session = Depends(get_db)):
     """Register or update a user's presence."""
     return crud.get_or_create_user(db, user.name)
+
+
+@app.get("/api/users/by-name/{name}", response_model=UserResponse)
+async def get_user_by_name(name: str, db: Session = Depends(get_db)):
+    """Get a user by their name."""
+    user = crud.get_user_by_name(db, name)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@app.put("/api/users/{user_id}", response_model=UserResponse)
+async def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get_db)):
+    """Update a user's profile and notification settings."""
+    user = crud.update_user(db, user_id, user_update)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
 
 
 # ============== API Routes - Care Items ==============

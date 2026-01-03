@@ -16,10 +16,10 @@
                 <li><a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Dashboard</a></li>
                 <li><a href="/history" class="{% if request.url.path == '/history' %}active{% endif %}">History</a></li>
                 <li class="nav-user">
-                    <button class="nav-user-btn" onclick="showUserModal()">
+                    <a href="/account" class="nav-user-btn {% if request.url.path == '/account' %}active{% endif %}" style="text-decoration: none;">
                         <span class="user-icon">👤</span>
                         <span id="current-user-name">...</span>
-                    </button>
+                    </a>
                 </li>
             </ul>
         </nav>

@@ -49,6 +49,11 @@ class User(Base):
     name = Column(String(100), nullable=False, unique=True)
     created_at = Column(DateTime, server_default=func.now())
     last_seen = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    # Notification fields
+    phone_number = Column(String(20), nullable=True)
+    wants_alerts = Column(Boolean, default=False)
+    alert_expiry_date = Column(Date, nullable=True)
 
 
 class CareItem(Base):

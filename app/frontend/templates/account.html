@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}Account Settings - Care-Tracker{% endblock %}
+
+{% block content %}
+<div class="account-container">
+    <h1>Account Settings</h1>
+    <p class="subtitle">Manage your profile and notification preferences.</p>
+
+    <div class="card account-card">
+        <form id="account-form">
+            <input type="hidden" id="account-user-id">
+            
+            <div class="form-group">
+                <label for="account-name">Display Name</label>
+                <input type="text" id="account-name" name="name" required placeholder="First & Last Name">
+                <p class="help-text">How your name appears in task history.</p>
+            </div>
+
+            <div class="form-separator"></div>
+
+            <div class="notification-settings">
+                <h3>SMS Notifications</h3>
+                <p class="help-text">Receive text alerts when timers run out and a summary of remaining tasks at 9 PM.</p>
+                
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="account-wants-alerts" name="wants_alerts">
+                    <label for="account-wants-alerts">Enable SMS Alerts</label>
+                </div>
+
+                <div id="sms-fields" style="display: none;">
+                    <div class="form-group">
+                        <label for="account-phone">Phone Number</label>
+                        <input type="tel" id="account-phone" name="phone_number" placeholder="+1234567890">
+                        <p class="help-text">Enter in E.164 format (e.g., +1 followed by area code and number).</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="account-expiry">Temporary Help? (Optional Expiry Date)</label>
+                        <input type="date" id="account-expiry" name="alert_expiry_date">
+                        <p class="help-text">Alerts will automatically stop after this date. Leave blank for permanent members.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <div id="account-status-msg" class="status-msg"></div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Logout / Switch User Section -->
+    <div class="card account-card logout-section" style="margin-top: 20px; border-top: 2px solid #eee;">
+        <h4 style="margin-bottom: 10px;">Switch User</h4>
+        <p class="help-text" style="margin-bottom: 15px;">Want to track tasks as someone else? Logout to switch accounts.</p>
+        <button type="button" class="btn btn-secondary" onclick="logout()">Logout / Switch User</button>
+    </div>
+</div>
+
+<style>
+    .account-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .account-card {
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        margin-top: 20px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #333;
+    }
+    
+    .form-group input[type="text"],
+    .form-group input[type="tel"],
+    .form-group input[type="date"] {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 1rem;
+    }
+    
+    .help-text {
+        font-size: 0.85rem;
+        color: #666;
+        margin-top: 5px;
+    }
+    
+    .form-separator {
+        height: 1px;
+        background: #eee;
+        margin: 30px 0;
+    }
+    
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .checkbox-group input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+    
+    .checkbox-group label {
+        margin-bottom: 0;
+        cursor: pointer;
+    }
+    
+    .notification-settings h3 {
+        margin-top: 0;
+        margin-bottom: 10px;
+    }
+    
+    .form-actions {
+        margin-top: 30px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+    
+    .status-msg {
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    .status-msg.success { color: #28a745; }
+    .status-msg.error { color: #dc3545; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        const wantsAlertsCheckbox = document.getElementById('account-wants-alerts');
+        const smsFields = document.getElementById('sms-fields');
+        const accountForm = document.getElementById('account-form');
+        const statusMsg = document.getElementById('account-status-msg');
+        
+        // Toggle SMS fields visibility
+        wantsAlertsCheckbox.addEventListener('change', () => {
+            smsFields.style.display = wantsAlertsCheckbox.checked ? 'block' : 'none';
+        });
+        
+        // Load current user data
+        const currentUserName = localStorage.getItem('care_tracker_user');
+        if (!currentUserName) {
+            // If no user, redirect to home to trigger check-in
+            window.location.href = '/';
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/users/by-name/${encodeURIComponent(currentUserName)}`);
+            if (response.ok) {
+                const user = await response.json();
+                document.getElementById('account-user-id').value = user.id;
+                document.getElementById('account-name').value = user.name;
+                document.getElementById('account-phone').value = user.phone_number || '';
+                document.getElementById('account-wants-alerts').checked = user.wants_alerts;
+                document.getElementById('account-expiry').value = user.alert_expiry_date || '';
+                
+                // Show SMS fields if alerts are enabled
+                if (user.wants_alerts) {
+                    smsFields.style.display = 'block';
+                }
+            } else {
+                statusMsg.textContent = "Error loading account data.";
+                statusMsg.className = "status-msg error";
+            }
+        } catch (err) {
+            console.error('Error fetching user:', err);
+            statusMsg.textContent = "Network error loading data.";
+            statusMsg.className = "status-msg error";
+        }
+        
+        // Handle form submission
+        accountForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userId = document.getElementById('account-user-id').value;
+            const newName = document.getElementById('account-name').value.trim();
+            const phoneNumber = document.getElementById('account-phone').value.trim();
+            const wantsAlerts = document.getElementById('account-wants-alerts').checked;
+            const expiryDate = document.getElementById('account-expiry').value || null;
+            
+            if (!newName) {
+                alert('Display name is required.');
+                return;
+            }
+            
+            statusMsg.textContent = "Saving...";
+            statusMsg.className = "status-msg";
+            
+            try {
+                const response = await fetch(`/api/users/${userId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: newName,
+                        phone_number: phoneNumber || null,
+                        wants_alerts: wantsAlerts,
+                        alert_expiry_date: expiryDate
+                    })
+                });
+                
+                if (response.ok) {
+                    // Update local storage if name changed
+                    localStorage.setItem('care_tracker_user', newName);
+                    updateUserDisplay(); // From app.js
+                    
+                    statusMsg.textContent = "Changes saved successfully!";
+                    statusMsg.className = "status-msg success";
+                    
+                    // Clear status message after 3 seconds
+                    setTimeout(() => {
+                        statusMsg.textContent = "";
+                    }, 3000);
+                } else {
+                    const error = await response.json();
+                    statusMsg.textContent = `Error: ${error.detail || 'Failed to save'}`;
+                    statusMsg.className = "status-msg error";
+                }
+            } catch (err) {
+                console.error('Error saving account:', err);
+                statusMsg.textContent = "Network error while saving.";
+                statusMsg.className = "status-msg error";
+            }
+        });
+    });
+
+    /**
+     * Clear user session and redirect home to trigger check-in
+     */
+    function logout() {
+        if (confirm('Are you sure you want to logout and switch users?')) {
+            localStorage.removeItem('care_tracker_user');
+            window.location.href = '/';
+        }
+    }
+</script>
+{% endblock %}
+

@@ -34,10 +34,20 @@ class PetResponse(PetBase):
 
 class UserBase(BaseModel):
     name: str
+    phone_number: Optional[str] = None
+    wants_alerts: bool = False
+    alert_expiry_date: Optional[date] = None
 
 
 class UserCreate(UserBase):
     pass
+
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    phone_number: Optional[str] = None
+    wants_alerts: Optional[bool] = None
+    alert_expiry_date: Optional[date] = None
 
 
 class UserResponse(UserBase):

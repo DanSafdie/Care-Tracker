@@ -8,7 +8,7 @@ from datetime import date, datetime, timedelta
 from typing import List, Optional, Dict, Any
 
 from models import Pet, CareItem, TaskLog, User
-from schemas import PetCreate, CareItemCreate, UserCreate
+from schemas import PetCreate, CareItemCreate, UserCreate, UserUpdate
 from utils import get_care_day
 
 
@@ -68,6 +68,11 @@ def clear_pet_timer(db: Session, pet_id: int) -> Optional[Pet]:
 
 # ============== User Operations ==============
 
+def get_user(db: Session, user_id: int) -> Optional[User]:
+    """Get a user by ID."""
+    return db.query(User).filter(User.id == user_id).first()
+
+
 def get_user_by_name(db: Session, name: str) -> Optional[User]:
     """Get a user by name."""
     return db.query(User).filter(User.name == name).first()
@@ -86,6 +91,21 @@ def get_or_create_user(db: Session, name: str) -> User:
         db_user.last_seen = datetime.now()
         db.commit()
         db.refresh(db_user)
+    return db_user
+
+
+def update_user(db: Session, user_id: int, user_update: UserUpdate) -> Optional[User]:
+    """Update a user's details."""
+    db_user = get_user(db, user_id)
+    if not db_user:
+        return None
+    
+    update_data = user_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_user, key, value)
+    
+    db.commit()
+    db.refresh(db_user)
     return db_user
 
 
