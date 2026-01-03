@@ -70,3 +70,44 @@ class TestNotifications:
         db_session.expire_all()
         assert pet.timer_end_time is None
 
+    @patch("main.send_sms")
+    def test_signup_confirmation_sms(self, mock_send_sms, client):
+        """Test that an SMS is sent when a new user signs up with alerts."""
+        payload = {
+            "name": "New Tester",
+            "phone_number": "+15551112222",
+            "wants_alerts": True,
+            "alert_expiry_date": (date.today() + timedelta(days=7)).isoformat()
+        }
+        response = client.post("/api/users/check-in", json=payload)
+        assert response.status_code == 200
+        
+        # Verify SMS was sent
+        assert mock_send_sms.called
+        args, _ = mock_send_sms.call_args
+        assert "+15551112222" in args
+        assert "Welcome to the pack" in args[1]
+        assert str(date.today() + timedelta(days=7)) in args[1]
+
+    @patch("main.send_sms")
+    def test_update_confirmation_sms(self, mock_send_sms, client):
+        """Test that an SMS is re-triggered when alert settings are updated."""
+        # 1. Create user first
+        setup_resp = client.post("/api/users/check-in", json={"name": "Update Tester"})
+        user_id = setup_resp.json()["user"]["id"]
+        mock_send_sms.reset_mock()
+        
+        # 2. Update with alerts enabled
+        update_payload = {
+            "phone_number": "+15559998888",
+            "wants_alerts": True
+        }
+        response = client.put(f"/api/users/{user_id}", json=update_payload)
+        assert response.status_code == 200
+        
+        # Verify SMS was sent to the new number
+        mock_send_sms.assert_called_once()
+        args, _ = mock_send_sms.call_args
+        assert "+15559998888" in args
+        assert "Update Tester" in args[1]
+

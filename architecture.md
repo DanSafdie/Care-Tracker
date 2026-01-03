@@ -162,6 +162,27 @@ Denamarin completed:
 - **Frontend**: JavaScript countdown updates every second, with server data as source of truth on page load
 - **Timezone handling**: Uses local time (not UTC) for consistency with household timezone
 
+## SMS Notifications
+
+The system provides real-time SMS alerts via Twilio to keep household members informed and coordinated.
+
+### Message Types
+1. **Sign-up / Update Confirmation**: Sent when a user first enables alerts or updates their notification settings (phone, expiry).
+   - *Message*: `🐶 Care-Tracker: Welcome to the pack, {name}! Your phone is now linked for pet care alerts. We'll keep you posted [until {date}]!`
+2. **Timer Expiration**: Sent when a pet's timer (e.g., "Empty stomach") reaches zero.
+   - *Message*: `⏰ Timer for {pet} ({label}) has run out!`
+3. **Nightly Reminder**: Sent at 9 PM daily if any tasks for any pet remain incomplete.
+   - *Message*: `🌙 Nightly Reminder - Still to do: {pet}: {task1}, {task2}...`
+
+### Trigger Logic
+- **Confirmation**: Triggered via `POST /api/users/check-in` (on initial signup with alert info) or `PUT /api/users/{id}` (on any save of alert settings).
+- **Timers/Reminders**: Handled by a background `APScheduler` in `main.py` that polls for expired timers every minute and runs the nightly summary at 21:00.
+
+### Technical Implementation
+- **Utility**: `app/backend/sms_utils.py` handles the Twilio API client.
+- **Environment**: Requires `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_PHONE_NUMBER`.
+- **Recipient Filtering**: Alerts are only sent to users with `wants_alerts = True`, a valid `phone_number`, and whose `alert_expiry_date` is either null or in the future.
+
 ## 4 AM Day Reset Logic
 
 The "care day" does not follow calendar days. Instead:

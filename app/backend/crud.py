@@ -82,7 +82,8 @@ def get_or_create_user(
     db: Session, 
     name: str, 
     phone_number: str = None, 
-    wants_alerts: bool = False
+    wants_alerts: bool = False,
+    alert_expiry_date: date = None
 ) -> tuple[User, bool]:
     """Get an existing user or create a new one."""
     db_user = get_user_by_name(db, name)
@@ -91,7 +92,8 @@ def get_or_create_user(
         db_user = User(
             name=name, 
             phone_number=phone_number,
-            wants_alerts=wants_alerts
+            wants_alerts=wants_alerts,
+            alert_expiry_date=alert_expiry_date
         )
         db.add(db_user)
         db.commit()
@@ -105,6 +107,8 @@ def get_or_create_user(
             db_user.phone_number = phone_number
         if wants_alerts:
             db_user.wants_alerts = wants_alerts
+        if alert_expiry_date is not None:
+            db_user.alert_expiry_date = alert_expiry_date
             
         db.commit()
         db.refresh(db_user)

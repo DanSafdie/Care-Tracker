@@ -43,6 +43,21 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# ============== Helper Functions ==============
+
+def send_user_alert_confirmation(user: User):
+    """
+    Sends a confirmation SMS when a user enables or updates their alert settings.
+    """
+    if not user.wants_alerts or not user.phone_number:
+        return
+    
+    expiry_text = f" until {user.alert_expiry_date}" if user.alert_expiry_date else ""
+    message = f"🐶 Care-Tracker: Welcome to the pack, {user.name}! Your phone is now linked for pet care alerts. We'll keep you posted{expiry_text}!"
+    
+    print(f"Sending alert confirmation to {user.name} ({user.phone_number})")
+    send_sms(user.phone_number, message)
+
 # Exception handling middleware for debugging
 @app.middleware("http")
 async def catch_exceptions_middleware(request: Request, call_next):
@@ -322,8 +337,14 @@ async def check_in_user(user: UserCreate, db: Session = Depends(get_db)):
         db, 
         user.name, 
         phone_number=user.phone_number,
-        wants_alerts=user.wants_alerts
+        wants_alerts=user.wants_alerts,
+        alert_expiry_date=user.alert_expiry_date
     )
+    
+    # Trigger SMS if this is a registration with alert info provided
+    if is_new and db_user.wants_alerts and db_user.phone_number:
+        send_user_alert_confirmation(db_user)
+        
     return {"user": db_user, "is_new": is_new}
 
 
@@ -342,6 +363,12 @@ async def update_user(user_id: int, user_update: UserUpdate, db: Session = Depen
     user = crud.update_user(db, user_id, user_update)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Trigger SMS whenever alert settings are "saved" (updated)
+    # The user specifically requested this to re-trigger on any save of alert info
+    if user.wants_alerts and user.phone_number:
+        send_user_alert_confirmation(user)
+        
     return user
 
 

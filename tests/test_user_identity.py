@@ -7,10 +7,15 @@ class TestUserIdentity:
         response = client.post("/api/users/check-in", json={"name": "Alice Wonderland"})
         assert response.status_code == 200
         data = response.json()
-        assert data["name"] == "Alice Wonderland"
-        assert "id" in data
-        assert "created_at" in data
-        assert "last_seen" in data
+        
+        # Structure is {"user": UserResponse, "is_new": bool}
+        assert "user" in data
+        user = data["user"]
+        assert user["name"] == "Alice Wonderland"
+        assert "id" in user
+        assert "created_at" in user
+        assert "last_seen" in user
+        assert data["is_new"] is True
 
     def test_user_search(self, client):
         """Test searching for users."""
