@@ -90,6 +90,14 @@ def seed_chessie_data(db: Session):
             category="food",
             display_order=6
         ),
+        CareItem(
+            pet_id=chessie.id,
+            name="Dental Chew",
+            description="Daily dental health treat",
+            notes="Give after dinner",
+            category="supplement",
+            display_order=7
+        ),
     ]
     
     for item in care_items:
