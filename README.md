@@ -4,7 +4,8 @@ A household pet care tracking system that helps multiple family members coordina
 
 ## Features
 
-- **Multi-user access**: No authentication required - anyone on your local network can access it
+- **"Soft" User Identity**: No passwords required for household use. Users "check-in" with a name that persists via `localStorage` and resolves to a central `users` registry in the database.
+- **Eventual Auth Ready**: The system is architected to transition to full authentication (FastAPI-Users, JWT) if public exposure or private profiles (e.g., for SMS reminders) are needed.
 - **Task tracking**: Mark care items complete with a single click
 - **Undo with confirmation**: Accidentally marked something? Undo it (with confirmation to prevent mistakes)
 - **4 AM day reset**: The "care day" resets at 4 AM, not midnight, so late-night care counts for the current day
@@ -90,11 +91,14 @@ The server binds to `0.0.0.0` by default, making it accessible from other device
 | `/api/status` | GET | Today's task status |
 | `/api/tasks/{id}/complete` | POST | Mark task complete |
 | `/api/tasks/{id}/undo` | POST | Undo task completion |
+| `/api/users/search` | GET | Search for existing caretakers |
+| `/api/users/check-in` | POST | Register or update user presence |
 | `/api/history` | GET | Get history log |
 | `/api/info` | GET | System info |
 
 ## Future Plans
 
+- **Full Authentication**: Optional transition to a library-based auth system (e.g. FastAPI-Users) for private profiles and sensitive data (phone numbers, email).
 - **Docker & Remote Access**: Containerized deployment with Tailscale/Cloudflare for multi-house synchronization.
 - **Physical Button Integration**: Support for Zigbee/Z-Wave buttons (IKEA SOMRIG, Aqara) for "one-click" logging.
 - **Ambient LED Warnings**: State-based lighting in the kitchen (Green/Yellow/Red) to signal care status without checking a phone.
