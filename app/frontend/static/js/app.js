@@ -9,6 +9,116 @@ let pendingAction = null;
 // Timer interval
 let timerInterval = null;
 
+// User Identity Functions
+/**
+ * Show the user identity modal
+ */
+function showUserModal() {
+    const modal = document.getElementById('user-modal');
+    const input = document.getElementById('user-search-input');
+    const currentName = localStorage.getItem('care_tracker_user') || '';
+    
+    input.value = currentName;
+    modal.style.display = 'flex';
+    input.focus();
+    
+    // Set up search listener
+    input.oninput = async (e) => {
+        const query = e.target.value.trim();
+        const results = document.getElementById('user-results');
+        
+        if (query.length < 1) {
+            results.innerHTML = '';
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
+            if (response.ok) {
+                const users = await response.json();
+                results.innerHTML = users.map(user => 
+                    `<div class="search-item" onclick="selectUser('${user.name}')">${user.name}</div>`
+                ).join('');
+            }
+        } catch (err) {
+            console.error('Error searching users:', err);
+        }
+    };
+}
+
+/**
+ * Select a user from the search results
+ */
+function selectUser(name) {
+    const input = document.getElementById('user-search-input');
+    input.value = name;
+    document.getElementById('user-results').innerHTML = '';
+}
+
+/**
+ * Confirm and save the user identity
+ */
+async function confirmUser() {
+    const name = document.getElementById('user-search-input').value.trim();
+    if (name) {
+        try {
+            // Register/check-in with the backend immediately
+            const response = await fetch('/api/users/check-in', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name: name })
+            });
+            
+            if (response.ok) {
+                localStorage.setItem('care_tracker_user', name);
+                closeUserModal();
+                updateUserDisplay();
+            } else {
+                const error = await response.json();
+                alert(`Error: ${error.detail || 'Failed to register user'}`);
+            }
+        } catch (err) {
+            console.error('Error during check-in:', err);
+            alert('Network error. Please try again.');
+        }
+    } else {
+        alert('Please enter a name');
+    }
+}
+
+/**
+ * Close the user modal
+ */
+function closeUserModal() {
+    document.getElementById('user-modal').style.display = 'none';
+    document.getElementById('user-results').innerHTML = '';
+}
+
+/**
+ * Update the user name display in the UI
+ */
+function updateUserDisplay() {
+    const name = localStorage.getItem('care_tracker_user');
+    const display = document.getElementById('current-user-name');
+    if (display) {
+        display.textContent = name || 'Unknown';
+    }
+}
+
+/**
+ * Ensure user is set before performing actions
+ */
+function ensureUser() {
+    const name = localStorage.getItem('care_tracker_user');
+    if (!name) {
+        showUserModal();
+        return false;
+    }
+    return name;
+}
+
 /**
  * Complete a task with confirmation
  * @param {number} careItemId - The care item ID
@@ -80,8 +190,11 @@ function closeModal() {
  * @param {number} petId - The pet ID
  */
 async function submitComplete(careItemId, taskName, petId) {
+    const username = ensureUser();
+    if (!username) return;
+
     try {
-        const response = await fetch(`/api/tasks/${careItemId}/complete`, {
+        const response = await fetch(`/api/tasks/${careItemId}/complete?completed_by=${encodeURIComponent(username)}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -173,8 +286,11 @@ function findTaskCard(taskName, petId) {
  * @param {number} careItemId - The care item ID
  */
 async function submitUndo(careItemId) {
+    const username = ensureUser();
+    if (!username) return;
+
     try {
-        const response = await fetch(`/api/tasks/${careItemId}/undo`, {
+        const response = await fetch(`/api/tasks/${careItemId}/undo?completed_by=${encodeURIComponent(username)}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -346,9 +462,17 @@ function checkTimers() {
 
 // Close modal when clicking outside
 document.addEventListener('click', (e) => {
-    const modal = document.getElementById('confirm-modal');
-    if (e.target === modal) {
+    const confirmModal = document.getElementById('confirm-modal');
+    const userModal = document.getElementById('user-modal');
+    
+    if (e.target === confirmModal) {
         closeModal();
+    }
+    if (e.target === userModal) {
+        const currentName = localStorage.getItem('care_tracker_user');
+        if (currentName) {
+            closeUserModal();
+        }
     }
 });
 
@@ -356,11 +480,19 @@ document.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closeModal();
+        const currentName = localStorage.getItem('care_tracker_user');
+        if (currentName) {
+            closeUserModal();
+        }
     }
 });
 
 // Initialize on load
 window.addEventListener('load', () => {
     console.log('Care-Tracker loaded');
+    updateUserDisplay();
+    if (!localStorage.getItem('care_tracker_user')) {
+        showUserModal();
+    }
     checkTimers();
 });

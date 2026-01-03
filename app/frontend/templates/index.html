@@ -41,7 +41,12 @@
                     </span>
                 </div>
                 
-                <h3 class="task-name">{{ task.care_item.name }}</h3>
+                <h3 class="task-name">
+                    {{ task.care_item.name }}
+                    {% if task.care_item.name in ['Denamarin', 'Ursodiol'] %}
+                    <span class="pill-pocket-badge">Pill Pocket</span>
+                    {% endif %}
+                </h3>
                 
                 {% if task.care_item.description %}
                 <p class="task-description">{{ task.care_item.description }}</p>

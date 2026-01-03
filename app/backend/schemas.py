@@ -30,6 +30,25 @@ class PetResponse(PetBase):
         from_attributes = True
 
 
+# ============== User Schemas ==============
+
+class UserBase(BaseModel):
+    name: str
+
+
+class UserCreate(UserBase):
+    pass
+
+
+class UserResponse(UserBase):
+    id: int
+    created_at: datetime
+    last_seen: datetime
+
+    class Config:
+        from_attributes = True
+
+
 # ============== CareItem Schemas ==============
 
 class CareItemBase(BaseModel):

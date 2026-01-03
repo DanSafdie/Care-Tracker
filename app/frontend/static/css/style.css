@@ -540,6 +540,20 @@ h1 {
     vertical-align: middle;
 }
 
+.pill-pocket-badge {
+    display: inline-block;
+    background: #ff7675; /* A soft red/pink color */
+    color: white;
+    font-size: 0.65rem;
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin-left: 4px;
+    vertical-align: middle;
+    font-weight: 600;
+    text-transform: uppercase;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
 /* ============== Timer ============== */
 .pet-timer {
     background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%);
@@ -648,11 +662,115 @@ footer {
     font-size: 0.9rem;
 }
 
+/* ============== User Identity (Header) ============== */
+.nav-user {
+    display: flex;
+    align-items: center;
+    border-left: 1px solid var(--gray-200);
+    padding-left: var(--space-md);
+    margin-left: var(--space-xs);
+}
+
+.nav-user-btn {
+    background: var(--gray-100);
+    border: 1px solid var(--gray-200);
+    border-radius: 20px;
+    padding: var(--space-xs) var(--space-md);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    color: var(--gray-700);
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    max-width: 180px;
+}
+
+.nav-user-btn:hover {
+    background: white;
+    border-color: var(--primary);
+    color: var(--primary);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.nav-user-btn #current-user-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-icon {
+    font-size: 0.9rem;
+}
+
+/* Modal styles preserved */
+.search-container {
+    position: relative;
+    width: 100%;
+    margin-bottom: var(--space-lg);
+}
+
+#user-search-input {
+    width: 100%;
+    padding: var(--space-md);
+    border: 2px solid var(--gray-300);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+#user-search-input:focus {
+    border-color: var(--primary);
+}
+
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid var(--gray-300);
+    border-top: none;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    z-index: 1001;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.search-item {
+    padding: var(--space-md);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.2s;
+}
+
+.search-item:hover {
+    background: var(--gray-100);
+    color: var(--primary);
+}
+
 /* ============== Responsive ============== */
 @media (max-width: 768px) {
     nav {
         flex-direction: column;
         gap: var(--space-md);
+    }
+
+    .nav-user {
+        border-left: none;
+        padding-left: 0;
+        margin-left: 0;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .nav-user-btn {
+        max-width: 100%;
+        width: 100%;
+        justify-content: center;
     }
     
     .task-grid {

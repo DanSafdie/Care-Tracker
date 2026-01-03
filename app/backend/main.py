@@ -27,7 +27,7 @@ from schemas import (
     PetResponse, PetCreate,
     CareItemResponse, CareItemCreate,
     TaskLogResponse, TaskStatus, DailyStatus,
-    HistoryEntry
+    HistoryEntry, UserResponse, UserCreate
 )
 import crud
 from utils import get_care_day, to_local_time
@@ -194,6 +194,20 @@ async def clear_pet_timer(pet_id: int, db: Session = Depends(get_db)):
     if not pet:
         raise HTTPException(status_code=404, detail="Pet not found")
     return {"success": True, "pet": pet}
+
+
+# ============== API Routes - Users ==============
+
+@app.get("/api/users/search", response_model=List[UserResponse])
+async def search_users(q: str = "", db: Session = Depends(get_db)):
+    """Search for existing usernames."""
+    return crud.search_users(db, q)
+
+
+@app.post("/api/users/check-in", response_model=UserResponse)
+async def check_in_user(user: UserCreate, db: Session = Depends(get_db)):
+    """Register or update a user's presence."""
+    return crud.get_or_create_user(db, user.name)
 
 
 # ============== API Routes - Care Items ==============

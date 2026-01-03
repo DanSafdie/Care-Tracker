@@ -15,6 +15,12 @@
             <ul class="nav-links">
                 <li><a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Dashboard</a></li>
                 <li><a href="/history" class="{% if request.url.path == '/history' %}active{% endif %}">History</a></li>
+                <li class="nav-user">
+                    <button class="nav-user-btn" onclick="showUserModal()">
+                        <span class="user-icon">👤</span>
+                        <span id="current-user-name">...</span>
+                    </button>
+                </li>
             </ul>
         </nav>
     </header>
@@ -22,6 +28,21 @@
     <main>
         {% block content %}{% endblock %}
     </main>
+
+    <!-- Global User Identity Modal -->
+    <div id="user-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3>Hey friend, what should we call you?</h3>
+            <p>This helps us keep track of who's helping out today!</p>
+            <div class="search-container">
+                <input type="text" id="user-search-input" placeholder="First & Last Name" autocomplete="off">
+                <div id="user-results" class="search-results"></div>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" onclick="confirmUser()">Confirm</button>
+            </div>
+        </div>
+    </div>
 
     <footer>
         <p>Care Day: {{ care_day.strftime('%A, %B %d, %Y') if care_day else 'Unknown' }} | Day resets at 4:00 AM</p>

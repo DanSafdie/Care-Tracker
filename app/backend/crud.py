@@ -7,8 +7,8 @@ from sqlalchemy import and_, desc, asc
 from datetime import date, datetime, timedelta
 from typing import List, Optional, Dict, Any
 
-from models import Pet, CareItem, TaskLog
-from schemas import PetCreate, CareItemCreate
+from models import Pet, CareItem, TaskLog, User
+from schemas import PetCreate, CareItemCreate, UserCreate
 from utils import get_care_day
 
 
@@ -64,6 +64,38 @@ def clear_pet_timer(db: Session, pet_id: int) -> Optional[Pet]:
     db.commit()
     db.refresh(db_pet)
     return db_pet
+
+
+# ============== User Operations ==============
+
+def get_user_by_name(db: Session, name: str) -> Optional[User]:
+    """Get a user by name."""
+    return db.query(User).filter(User.name == name).first()
+
+
+def get_or_create_user(db: Session, name: str) -> User:
+    """Get an existing user or create a new one."""
+    db_user = get_user_by_name(db, name)
+    if not db_user:
+        db_user = User(name=name)
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+    else:
+        # Update last_seen
+        db_user.last_seen = datetime.now()
+        db.commit()
+        db.refresh(db_user)
+    return db_user
+
+
+def search_users(db: Session, query: str, limit: int = 5) -> List[User]:
+    """Search for users by name prefix."""
+    if not query:
+        return []
+    return db.query(User).filter(
+        User.name.ilike(f"{query}%")
+    ).order_by(User.name).limit(limit).all()
 
 
 # ============== CareItem Operations ==============
@@ -139,6 +171,10 @@ def complete_task(db: Session, care_item_id: int, completed_by: str = None, note
     Creates a new log entry with action='completed'.
     """
     care_day = get_care_day()
+    
+    # If a name is provided, ensure the user exists in the registry
+    if completed_by:
+        get_or_create_user(db, completed_by)
     
     log = TaskLog(
         care_item_id=care_item_id,

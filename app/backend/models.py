@@ -38,6 +38,19 @@ class Pet(Base):
     care_items = relationship("CareItem", back_populates="pet")
 
 
+class User(Base):
+    """
+    A user/caretaker in the household.
+    Used for identifying who completed tasks without full auth.
+    """
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False, unique=True)
+    created_at = Column(DateTime, server_default=func.now())
+    last_seen = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
 class CareItem(Base):
     """
     A care task/item for a pet.
