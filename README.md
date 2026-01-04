@@ -10,6 +10,7 @@ A household pet care tracking system that helps multiple family members coordina
 - **Undo with confirmation**: Accidentally marked something? Undo it (with confirmation to prevent mistakes)
 - **4 AM day reset**: The "care day" resets at 4 AM, not midnight, so late-night care counts for the current day
 - **Full history**: All actions logged with timestamps
+- **Intelligent Timers**: Coordinating medications like Denamarin with meal times (logic: 2hr wait after food if medication pending, 1hr wait after medication if meal pending)
 - **Mobile-friendly**: Responsive design works on phones and tablets
 - **Extensible**: Easy to add new pets, care items, or responsibilities
 

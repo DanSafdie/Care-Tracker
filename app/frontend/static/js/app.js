@@ -336,8 +336,20 @@ function findTaskCard(taskName, petId) {
             const cards = section.querySelectorAll('.task-card');
             for (const card of cards) {
                 const nameElement = card.querySelector('.task-name');
-                if (nameElement && nameElement.textContent.trim() === taskName) {
-                    return card;
+                if (nameElement) {
+                    // Fix: Use a more robust way to get just the task name, 
+                    // excluding child elements like badges.
+                    // We'll clone the node and remove children to get only the direct text.
+                    const clone = nameElement.cloneNode(true);
+                    while (clone.children.length > 0) {
+                        clone.removeChild(clone.children[0]);
+                    }
+                    const directText = clone.textContent.trim();
+                    const match = directText === taskName;
+                    
+                    if (match) {
+                        return card;
+                    }
                 }
             }
         }
