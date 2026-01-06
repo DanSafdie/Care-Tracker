@@ -46,6 +46,7 @@ def set_pet_timer(db: Session, pet_id: int, hours: float, label: str) -> Optiona
     end_time = datetime.now() + timedelta(hours=hours)
     db_pet.timer_end_time = end_time
     db_pet.timer_label = label
+    db_pet.timer_alert_sent = False
     
     db.commit()
     db.refresh(db_pet)
@@ -60,6 +61,7 @@ def clear_pet_timer(db: Session, pet_id: int) -> Optional[Pet]:
     
     db_pet.timer_end_time = None
     db_pet.timer_label = None
+    db_pet.timer_alert_sent = False
     
     db.commit()
     db.refresh(db_pet)

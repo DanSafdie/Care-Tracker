@@ -33,6 +33,7 @@ class Pet(Base):
     # Timer fields (server-side tracking)
     timer_end_time = Column(DateTime, nullable=True)
     timer_label = Column(String(100), nullable=True)
+    timer_alert_sent = Column(Boolean, default=False)
 
     # Relationship to care items
     care_items = relationship("CareItem", back_populates="pet")

@@ -75,6 +75,9 @@ Represents a pet in the household.
 | notes | text | General notes about the pet |
 | is_active | bool | Soft delete flag |
 | created_at | datetime | Record creation time |
+| timer_end_time | datetime | Future expiration time for an active timer |
+| timer_label | string | Human-readable label for the timer |
+| timer_alert_sent | bool | Flag to track if the expiration SMS has been sent |
 
 ### CareItem
 A care task associated with a pet.

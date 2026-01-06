@@ -104,10 +104,11 @@ def check_timers_job():
     db = SessionLocal()
     try:
         now = datetime.now()
-        # Find pets with expired timers
+        # Find pets with expired timers that haven't been alerted yet
         expired_pets = db.query(Pet).filter(
             Pet.timer_end_time != None,
-            Pet.timer_end_time <= now
+            Pet.timer_end_time <= now,
+            Pet.timer_alert_sent == False
         ).all()
         
         if not expired_pets:
@@ -121,10 +122,9 @@ def check_timers_job():
         ).all()
         
         if not users:
-            # Still clear the timers so they don't stay "expired" forever
+            # Still mark as alerted so they don't keep trying every minute
             for pet in expired_pets:
-                pet.timer_end_time = None
-                pet.timer_label = None
+                pet.timer_alert_sent = True
             db.commit()
             return
 
@@ -133,9 +133,9 @@ def check_timers_job():
             for user in users:
                 send_sms(user.phone_number, message)
             
-            # Clear the timer so it doesn't alert again
-            pet.timer_end_time = None
-            pet.timer_label = None
+            # Mark the timer as alerted so it doesn't alert again
+            # BUT keep the timer fields so it stays "READY!" in the UI
+            pet.timer_alert_sent = True
         
         db.commit()
     except Exception as e:

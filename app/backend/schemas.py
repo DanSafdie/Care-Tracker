@@ -25,6 +25,7 @@ class PetResponse(PetBase):
     created_at: datetime
     timer_end_time: Optional[datetime] = None
     timer_label: Optional[str] = None
+    timer_alert_sent: bool = False
 
     class Config:
         from_attributes = True

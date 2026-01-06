@@ -65,10 +65,11 @@ class TestNotifications:
         # Verify: Only Active User got the SMS
         mock_send_sms.assert_called_once_with("+1000000000", "⏰ Timer for Buddy (Test Timer) has run out!")
     
-        # Verify: Timer was cleared
+        # Verify: Timer was NOT cleared, but marked as alerted
         # We need to expire the object to force a reload since it was changed in the "job"
         db_session.expire_all()
-        assert pet.timer_end_time is None
+        assert pet.timer_end_time is not None
+        assert pet.timer_alert_sent is True
 
     @patch("main.send_sms")
     def test_signup_confirmation_sms(self, mock_send_sms, client):
