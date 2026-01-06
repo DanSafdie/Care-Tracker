@@ -68,6 +68,33 @@ def clear_pet_timer(db: Session, pet_id: int) -> Optional[Pet]:
     return db_pet
 
 
+def clear_all_expired_timers(db: Session) -> int:
+    """
+    Clear all expired timers that have already been alerted.
+    This is intended to be run at the care day reset (4 AM).
+    Returns the number of timers cleared.
+    """
+    from datetime import datetime
+    now = datetime.now()
+    
+    # We only clear timers that are expired AND have had their alert sent
+    # to avoid clearing a timer that just expired but hasn't notified yet.
+    expired_pets = db.query(Pet).filter(
+        Pet.timer_end_time != None,
+        Pet.timer_end_time <= now,
+        Pet.timer_alert_sent == True
+    ).all()
+    
+    count = len(expired_pets)
+    for pet in expired_pets:
+        pet.timer_end_time = None
+        pet.timer_label = None
+        pet.timer_alert_sent = False
+        
+    db.commit()
+    return count
+
+
 # ============== User Operations ==============
 
 def get_user(db: Session, user_id: int) -> Optional[User]:

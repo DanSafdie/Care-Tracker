@@ -184,6 +184,22 @@ def nightly_reminder_job():
         db.close()
 
 
+def daily_reset_job():
+    """
+    Perform daily reset tasks at 4 AM.
+    Currently: Clears expired timers that have already alerted.
+    """
+    db = SessionLocal()
+    try:
+        count = crud.clear_all_expired_timers(db)
+        if count > 0:
+            print(f"Daily Reset: Cleared {count} expired timers.")
+    except Exception as e:
+        print(f"Error in daily_reset_job: {e}")
+    finally:
+        db.close()
+
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize database and seed data on startup."""
@@ -196,6 +212,8 @@ async def startup_event():
         scheduler.add_job(check_timers_job, 'interval', minutes=1, id='check_timers')
         # Nightly reminder at 9 PM (21:00)
         scheduler.add_job(nightly_reminder_job, 'cron', hour=21, minute=0, id='nightly_reminder')
+        # Daily reset at 4 AM (04:00)
+        scheduler.add_job(daily_reset_job, 'cron', hour=4, minute=0, id='daily_reset')
         scheduler.start()
         print("Background scheduler started.")
 
