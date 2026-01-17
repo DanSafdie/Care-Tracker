@@ -14,3 +14,4 @@ class TestFrontend:
         assert response.status_code == 200
         assert "History" in response.text
 
+

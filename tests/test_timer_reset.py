@@ -64,3 +64,4 @@ def test_daily_reset_job_execution(db_session):
     db_session.refresh(pet)
     assert pet.timer_end_time is None
 
+

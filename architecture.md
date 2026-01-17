@@ -207,11 +207,14 @@ The `notes` field on CareItem currently contains human-readable timing info (e.g
 - Dependency rules (must give X before Y)
 - Interval rules (every 8 hours)
 
-### Home Assistant Integration (Planned)
-The API design supports future integration with Home Assistant for:
-- LED status indicators (green = all done, red = pending)
-- Notifications when tasks are overdue
-- Voice control via Alexa/Google Home
+### Home Assistant Integration
+The system is integrated with Home Assistant to provide visual feedback and ambient awareness in the household:
+- **LED Status Indicators**: Inovelli Z-Wave switches (e.g., Downstairs Spotlight) change color based on pet care status.
+  - **Yellow Solid**: A timer is currently running (e.g., waiting after food).
+  - **Green Pulse**: A timer has expired and the pet is ready for the next task.
+  - **Off/Blue**: All timers are cleared or dismissed.
+- **REST API Communication**: The backend calls Home Assistant scripts via its REST API.
+- **Future expansion**: Planned support for voice control via Alexa/Google Home.
 
 ### Multi-Pet Expansion
 The data model already supports multiple pets. Adding a new pet:
@@ -272,7 +275,8 @@ The system is designed to bridge the digital and physical worlds for lower frict
 - **Stationary Hubs**: Multi-button remotes (e.g., IKEA SOMRIG) mounted in the kitchen or on the care box to log feedings and supplements.
 
 ### 2. Ambient State Indicators
-- **LED Status Bar**: Addressable LED strips (NeoPixels) that change color based on the pet's current care status:
+- **Inovelli LED Bar (Implemented)**: Z-Wave dimmer LEDs reflect timer states (Yellow=Running, Green Pulse=Complete).
+- **LED Status Bar (Planned)**: Addressable LED strips (NeoPixels) that change color based on the pet's current care status:
   - **Green**: All tasks for the current block are complete.
   - **Yellow Pulse**: A task is approaching delinquency (e.g., past "ideal time").
   - **Red**: A task is delinquent and requires immediate attention.

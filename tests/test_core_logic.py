@@ -42,3 +42,4 @@ class TestCareDayLogic:
         assert local_dt.hour == 12
         assert local_dt.day == 1
 
+

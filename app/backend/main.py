@@ -20,6 +20,7 @@ from datetime import date, datetime
 from typing import List, Optional
 import os
 import traceback
+import logging
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from database import get_db, init_db, SessionLocal
@@ -35,6 +36,11 @@ import crud
 from utils import get_care_day, to_local_time
 from seed_data import run_seed
 from sms_utils import send_sms
+from hass_utils import call_hass_script
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
@@ -55,7 +61,7 @@ def send_user_alert_confirmation(user: User):
     expiry_text = f" until {user.alert_expiry_date}" if user.alert_expiry_date else ""
     message = f"🐶 Care-Tracker: Welcome to the pack, {user.name}! Your phone is now linked for pet care alerts. We'll keep you posted{expiry_text}!"
     
-    print(f"Sending alert confirmation to {user.name} ({user.phone_number})")
+    logger.info(f"Sending alert confirmation to {user.name} ({user.phone_number})")
     send_sms(user.phone_number, message)
 
 # Exception handling middleware for debugging
@@ -91,6 +97,28 @@ def jinja_strftime(dt, fmt):
 
 templates.env.filters["local_time"] = to_local_time
 templates.env.filters["strftime"] = jinja_strftime
+
+
+def sync_led_status(db: Session):
+    """
+    Synchronize the Inovelli LED state with current timer statuses.
+    Priority: Expired (Green Pulse) > Running (Yellow Solid) > None (Clear)
+    """
+    try:
+        expired_count = crud.get_expired_timers_count(db)
+        if expired_count > 0:
+            call_hass_script("downstairs_spotlight_led_green_pulse")
+            return
+
+        active_count = crud.get_active_timers_count(db)
+        if active_count > 0:
+            call_hass_script("downstairs_spotlight_led_yellow_solid")
+            return
+
+        # No timers active or expired
+        call_hass_script("downstairs_spotlight_led_clear")
+    except Exception as e:
+        logger.error(f"Error syncing LED status: {e}")
 
 
 # ============== Startup Events ==============
@@ -138,6 +166,9 @@ def check_timers_job():
             pet.timer_alert_sent = True
         
         db.commit()
+        
+        # Sync LED status after checking timers
+        sync_led_status(db)
     except Exception as e:
         print(f"Error in check_timers_job: {e}")
         db.rollback()
@@ -184,22 +215,6 @@ def nightly_reminder_job():
         db.close()
 
 
-def daily_reset_job():
-    """
-    Perform daily reset tasks at 4 AM.
-    Currently: Clears expired timers that have already alerted.
-    """
-    db = SessionLocal()
-    try:
-        count = crud.clear_all_expired_timers(db)
-        if count > 0:
-            print(f"Daily Reset: Cleared {count} expired timers.")
-    except Exception as e:
-        print(f"Error in daily_reset_job: {e}")
-    finally:
-        db.close()
-
-
 @app.on_event("startup")
 async def startup_event():
     """Initialize database and seed data on startup."""
@@ -212,10 +227,15 @@ async def startup_event():
         scheduler.add_job(check_timers_job, 'interval', minutes=1, id='check_timers')
         # Nightly reminder at 9 PM (21:00)
         scheduler.add_job(nightly_reminder_job, 'cron', hour=21, minute=0, id='nightly_reminder')
-        # Daily reset at 4 AM (04:00)
-        scheduler.add_job(daily_reset_job, 'cron', hour=4, minute=0, id='daily_reset')
         scheduler.start()
         print("Background scheduler started.")
+        
+        # Initial LED sync
+        db = SessionLocal()
+        try:
+            sync_led_status(db)
+        finally:
+            db.close()
 
 
 # ============== Web UI Routes ==============
@@ -328,6 +348,8 @@ async def set_pet_timer(
     pet = crud.set_pet_timer(db, pet_id, hours, label)
     if not pet:
         raise HTTPException(status_code=404, detail="Pet not found")
+    
+    sync_led_status(db)
     return {"success": True, "pet": pet}
 
 
@@ -337,6 +359,8 @@ async def clear_pet_timer(pet_id: int, db: Session = Depends(get_db)):
     pet = crud.clear_pet_timer(db, pet_id)
     if not pet:
         raise HTTPException(status_code=404, detail="Pet not found")
+    
+    sync_led_status(db)
     return {"success": True, "pet": pet}
 
 

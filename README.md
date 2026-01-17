@@ -1,6 +1,13 @@
 # 🐾 Care-Tracker
 
+## Project Overview
+
 A household pet care tracking system that helps multiple family members coordinate care tasks for pets. Track medications, feedings, supplements, and more with a complete history log.
+
+### Development & Deployment
+- **Development**: Typically developed on macOS (MacBook Pro).
+- **Production/Runtime**: Designed to run on a **Windows** via **Docker**.
+- **Cross-Platform**: The system is built to be fully compatible with both environments.
 
 ## Features
 

@@ -9,8 +9,11 @@ services:
     volumes:
       # Persist the database file to a local data directory
       - ./data:/data
+      # Mount the app directory for live code changes
+      - ./app:/app/app
     environment:
       - DATA_DIR=/data
       - TZ=America/New_York
     restart: unless-stopped
+
 
