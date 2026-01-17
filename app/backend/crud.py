@@ -35,6 +35,18 @@ def create_pet(db: Session, pet: PetCreate) -> Pet:
     db.refresh(db_pet)
     return db_pet
 
+def clear_all_expired_timers(db: Session) -> int:
+    now = datetime.now()
+    expired_pets = db.query(Pet).filter(Pet.timer_end_time != None, Pet.timer_end_time <= now, Pet.timer_alert_sent == True).all()
+    count = len(expired_pets)
+    for pet in expired_pets:
+        pet.timer_end_time = None
+        pet.timer_label = None
+        pet.timer_alert_sent = False
+    db.commit()
+    return count
+
+
 
 def set_pet_timer(db: Session, pet_id: int, hours: float, label: str) -> Optional[Pet]:
     """Set a timer for a pet."""

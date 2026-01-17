@@ -176,6 +176,20 @@ def check_timers_job():
         db.close()
 
 
+
+
+def daily_reset_job():
+    db = SessionLocal()
+    try:
+        count = crud.clear_all_expired_timers(db)
+        if count > 0:
+            sync_led_status(db)
+    except Exception as e:
+        print(e)
+    finally:
+        db.close()
+
+
 def nightly_reminder_job():
     """Send a summary of incomplete tasks at 9 PM."""
     db = SessionLocal()

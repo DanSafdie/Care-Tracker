@@ -303,7 +303,7 @@ async function handleTimerPrompts(taskName, petId) {
         // Only prompt if Denamarin hasn't been given yet
         if (!isDenaCompleted) {
             const mealName = taskName.toLowerCase();
-            if (confirm(`${taskName} complete! Set a 2-hour timer to know when she has an empty stomach for Denamarin?`)) {
+            if (confirm(`${taskName} done! REMOVE FOOD NOW so she doesn't eat right before her meds. Start 2h timer? (Kitchen LED flashes green when done)`)) {
                 await startTimer(petId, 2, 'Empty stomach');
             }
         }
@@ -315,7 +315,7 @@ async function handleTimerPrompts(taskName, petId) {
         const mealsRemaining = !isBreakfastCompleted || !isDinnerCompleted;
         
         if (mealsRemaining) {
-            if (confirm('Denamarin given! Set a 1-hour timer to know when she can have her next meal?')) {
+            if (confirm('Denamarin given! Start 1h meds absorption timer? (Kitchen LED flashes green when done)')) {
                 await startTimer(petId, 1, 'Next meal ready');
             }
         }
