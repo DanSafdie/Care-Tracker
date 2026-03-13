@@ -6,7 +6,7 @@ A household pet care tracking system that enables multiple family members to coo
 
 ## Key Features
 
-- **Multi-user access**: No authentication required for household use on local network
+- **Authenticated multi-user access**: Password-based login (bcrypt hashing, JWT session cookies)
 - **Task tracking**: Mark care items complete, with undo capability (with confirmation)
 - **4 AM day reset**: The "care day" resets at 4 AM, not midnight, to handle late-night care
 - **Timer functionality**: Smart timers for medication/feeding intervals (e.g., 2hr wait after food for Denamarin)
@@ -31,18 +31,21 @@ A household pet care tracking system that enables multiple family members to coo
 │   ├── backend/
 │   │   ├── __init__.py
 │   │   ├── main.py          # FastAPI application & routes
-│   │   ├── database.py      # DB connection & session management
-│   │   ├── models.py        # SQLAlchemy ORM models
-│   │   ├── schemas.py       # Pydantic request/response schemas
-│   │   ├── crud.py          # Database operations
-│   │   ├── utils.py         # Utilities (care day calculation, etc.)
-│   │   └── seed_data.py     # Initial data seeding
+    │   │   ├── auth.py          # Password hashing (bcrypt), JWT token management, auth dependencies
+    │   │   ├── database.py      # DB connection & session management
+    │   │   ├── models.py        # SQLAlchemy ORM models
+    │   │   ├── schemas.py       # Pydantic request/response schemas
+    │   │   ├── crud.py          # Database operations
+    │   │   ├── utils.py         # Utilities (care day calculation, etc.)
+    │   │   └── seed_data.py     # Initial data seeding
 │   │
 │   └── frontend/
 │       ├── templates/
-│       │   ├── base.html    # Base template with nav/footer
-│       │   ├── index.html   # Dashboard (today's tasks)
-│       │   └── history.html # History log view
+    │       │   ├── base.html    # Base template with nav/footer (auth-aware)
+    │       │   ├── login.html   # Login / signup page with password confirmation
+    │       │   ├── index.html   # Dashboard (today's tasks)
+    │       │   ├── account.html # Account settings + change password
+    │       │   └── history.html # History log view
 │       │
 │       └── static/
 │           ├── css/
@@ -78,6 +81,20 @@ Represents a pet in the household.
 | timer_end_time | datetime | Future expiration time for an active timer |
 | timer_label | string | Human-readable label for the timer |
 | timer_alert_sent | bool | Flag to track if the expiration SMS has been sent |
+
+### User
+A user/caretaker in the household.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | int | Primary key |
+| name | string | Unique display name |
+| password_hash | string | Bcrypt-hashed password (never stored in plaintext) |
+| created_at | datetime | Account creation time |
+| last_seen | datetime | Last login / activity time |
+| phone_number | string | For SMS alerts (E.164 format) |
+| wants_alerts | bool | Whether to receive SMS notifications |
+| alert_expiry_date | date | Optional: stop alerts after this date |
 
 ### CareItem
 A care task associated with a pet.
@@ -125,8 +142,42 @@ Historical record of task completions and undos.
 ### History
 - `GET /api/history` - Get task history with optional filters
 
+### Authentication
+- `GET /login` - Login / signup page
+- `POST /login` - Submit login form
+- `POST /signup` - Submit signup form (password + confirmation)
+- `GET /logout` - Clear session and redirect to login
+- `POST /api/users/change-password` - Change password (authenticated)
+- `GET /api/users/me` - Get current authenticated user profile
+
 ### System
 - `GET /api/info` - Get system info (care day, version, etc.)
+
+## Authentication & Password Security
+
+### Overview
+The system uses password-based authentication with secure defaults:
+- **Passwords** are hashed with **bcrypt** (via passlib) before storage — plaintext passwords are never persisted
+- **Sessions** use signed **JWT tokens** stored in HTTP-only cookies (not localStorage) for XSS protection
+- JWT tokens expire after 30 days (configurable via `ACCESS_TOKEN_EXPIRE_DAYS` in `auth.py`)
+
+### Flows
+1. **Signup**: Requires name + password entered twice (confirmation). Server validates password strength (min 6 chars) and uniqueness of name.
+2. **Login**: Name + password verified against bcrypt hash. On success, a JWT cookie is set.
+3. **Change Password**: Authenticated users can change their password in Account Settings. Requires current password + new password entered twice.
+4. **Logout**: Clears the session cookie.
+
+### Protected Routes
+All web UI pages (`/`, `/history`, `/account`) require authentication. Unauthenticated requests are redirected to `/login`. API endpoints that modify user data also require authentication.
+
+### Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| AUTH_SECRET_KEY | Random (generated at startup) | JWT signing key. Set in `.env` for persistence across restarts. |
+
+### Migration for Existing Users
+Run `python notebooks/migrate_passwords.py` to add the `password_hash` column to existing databases and generate temporary random passwords for all pre-existing users. The script prints a table of (username, temporary password) for distribution.
 
 ## Timer Functionality
 
@@ -341,3 +392,4 @@ downstairs_spotlight_led_green_solid:
 | PORT | 8273 | Server port |
 | DATA_DIR | /workspace/data | SQLite database location |
 | TZ | America/New_York | Timezone for 4 AM reset |
+| AUTH_SECRET_KEY | Random (per-start) | JWT signing secret. Set in `.env` for persistence across restarts. |
