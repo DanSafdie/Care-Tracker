@@ -42,12 +42,13 @@ class Pet(Base):
 class User(Base):
     """
     A user/caretaker in the household.
-    Used for identifying who completed tasks without full auth.
+    Authenticated with bcrypt-hashed passwords; sessions via JWT cookie.
     """
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False, unique=True)
+    password_hash = Column(String(255), nullable=False)
     created_at = Column(DateTime, server_default=func.now())
     last_seen = Column(DateTime, server_default=func.now(), onupdate=func.now())
     

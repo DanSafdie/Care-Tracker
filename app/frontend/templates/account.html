@@ -9,11 +9,12 @@
 
     <div class="card account-card">
         <form id="account-form">
-            <input type="hidden" id="account-user-id">
+            <input type="hidden" id="account-user-id" value="{{ current_user.id }}">
             
             <div class="form-group">
                 <label for="account-name">Display Name</label>
-                <input type="text" id="account-name" name="name" required placeholder="First & Last Name">
+                <input type="text" id="account-name" name="name" required placeholder="First & Last Name"
+                       value="{{ current_user.name }}">
                 <p class="help-text">How your name appears in task history.</p>
             </div>
 
@@ -24,20 +25,23 @@
                 <p class="help-text">Receive text alerts when timers run out and a summary of remaining tasks at 9 PM.</p>
                 
                 <div class="form-group checkbox-group">
-                    <input type="checkbox" id="account-wants-alerts" name="wants_alerts">
+                    <input type="checkbox" id="account-wants-alerts" name="wants_alerts"
+                           {% if current_user.wants_alerts %}checked{% endif %}>
                     <label for="account-wants-alerts">Enable SMS Alerts</label>
                 </div>
 
-                <div id="sms-fields" style="display: none;">
+                <div id="sms-fields" style="display: {% if current_user.wants_alerts %}block{% else %}none{% endif %};">
                     <div class="form-group">
                         <label for="account-phone">Phone Number</label>
-                        <input type="tel" id="account-phone" name="phone_number" placeholder="+1234567890">
+                        <input type="tel" id="account-phone" name="phone_number" placeholder="+1234567890"
+                               value="{{ current_user.phone_number or '' }}">
                         <p class="help-text">Enter in E.164 format (e.g., +1 followed by area code and number).</p>
                     </div>
 
                     <div class="form-group">
                         <label for="account-expiry">Visiting Helper? (Optional Expiry Date)</label>
-                        <input type="date" id="account-expiry" name="alert_expiry_date">
+                        <input type="date" id="account-expiry" name="alert_expiry_date"
+                               value="{{ current_user.alert_expiry_date or '' }}">
                         <p class="help-text">Alerts will automatically stop after this date. Leave blank for permanent household members.</p>
                     </div>
                 </div>
@@ -50,11 +54,35 @@
         </form>
     </div>
 
-    <!-- Logout / Switch User Section -->
+    <!-- Change Password Section -->
+    <div class="card account-card" style="margin-top: 20px;">
+        <h3 style="margin-bottom: 10px;">Change Password</h3>
+        <p class="help-text" style="margin-bottom: 15px;">Update your login password.</p>
+        <form id="password-form">
+            <div class="form-group">
+                <label for="current-password">Current Password</label>
+                <input type="password" id="current-password" required placeholder="Enter current password" autocomplete="current-password">
+            </div>
+            <div class="form-group">
+                <label for="new-password">New Password</label>
+                <input type="password" id="new-password" required placeholder="Min 6 characters" autocomplete="new-password" minlength="6">
+            </div>
+            <div class="form-group">
+                <label for="new-password-confirm">Confirm New Password</label>
+                <input type="password" id="new-password-confirm" required placeholder="Type new password again" autocomplete="new-password" minlength="6">
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Update Password</button>
+                <div id="password-status-msg" class="status-msg"></div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Logout Section -->
     <div class="card account-card logout-section" style="margin-top: 20px; border-top: 2px solid #eee;">
-        <h4 style="margin-bottom: 10px;">Switch User</h4>
-        <p class="help-text" style="margin-bottom: 15px;">Want to track tasks as someone else? Logout to switch accounts.</p>
-        <button type="button" class="btn btn-secondary" onclick="logout()">Logout / Switch User</button>
+        <h4 style="margin-bottom: 10px;">Session</h4>
+        <p class="help-text" style="margin-bottom: 15px;">Log out to switch to a different account.</p>
+        <a href="/logout" class="btn btn-secondary" style="text-align: center; text-decoration: none;">Logout</a>
     </div>
 </div>
 
@@ -86,7 +114,8 @@
     
     .form-group input[type="text"],
     .form-group input[type="tel"],
-    .form-group input[type="date"] {
+    .form-group input[type="date"],
+    .form-group input[type="password"] {
         width: 100%;
         padding: 12px;
         border: 1px solid #ddd;
@@ -147,50 +176,20 @@
 
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', async () => {
+    document.addEventListener('DOMContentLoaded', () => {
         const wantsAlertsCheckbox = document.getElementById('account-wants-alerts');
         const smsFields = document.getElementById('sms-fields');
         const accountForm = document.getElementById('account-form');
         const statusMsg = document.getElementById('account-status-msg');
+        const passwordForm = document.getElementById('password-form');
+        const passwordStatusMsg = document.getElementById('password-status-msg');
         
         // Toggle SMS fields visibility
         wantsAlertsCheckbox.addEventListener('change', () => {
             smsFields.style.display = wantsAlertsCheckbox.checked ? 'block' : 'none';
         });
         
-        // Load current user data
-        const currentUserName = localStorage.getItem('care_tracker_user');
-        if (!currentUserName) {
-            // If no user, redirect to home to trigger check-in
-            window.location.href = '/';
-            return;
-        }
-        
-        try {
-            const response = await fetch(`/api/users/by-name/${encodeURIComponent(currentUserName)}`);
-            if (response.ok) {
-                const user = await response.json();
-                document.getElementById('account-user-id').value = user.id;
-                document.getElementById('account-name').value = user.name;
-                document.getElementById('account-phone').value = user.phone_number || '';
-                document.getElementById('account-wants-alerts').checked = user.wants_alerts;
-                document.getElementById('account-expiry').value = user.alert_expiry_date || '';
-                
-                // Show SMS fields if alerts are enabled
-                if (user.wants_alerts) {
-                    smsFields.style.display = 'block';
-                }
-            } else {
-                statusMsg.textContent = "Error loading account data.";
-                statusMsg.className = "status-msg error";
-            }
-        } catch (err) {
-            console.error('Error fetching user:', err);
-            statusMsg.textContent = "Network error loading data.";
-            statusMsg.className = "status-msg error";
-        }
-        
-        // Handle form submission
+        // Handle profile form submission
         accountForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const userId = document.getElementById('account-user-id').value;
@@ -220,17 +219,14 @@
                 });
                 
                 if (response.ok) {
-                    // Update local storage if name changed
-                    localStorage.setItem('care_tracker_user', newName);
-                    updateUserDisplay(); // From app.js
+                    // Update the header display name
+                    const nameEl = document.getElementById('current-user-name');
+                    if (nameEl) nameEl.textContent = newName;
+                    window.CURRENT_USER_NAME = newName;
                     
                     statusMsg.textContent = "Changes saved successfully!";
                     statusMsg.className = "status-msg success";
-                    
-                    // Clear status message after 3 seconds
-                    setTimeout(() => {
-                        statusMsg.textContent = "";
-                    }, 3000);
+                    setTimeout(() => { statusMsg.textContent = ""; }, 3000);
                 } else {
                     const error = await response.json();
                     statusMsg.textContent = `Error: ${error.detail || 'Failed to save'}`;
@@ -242,17 +238,56 @@
                 statusMsg.className = "status-msg error";
             }
         });
-    });
 
-    /**
-     * Clear user session and redirect home to trigger check-in
-     */
-    function logout() {
-        if (confirm('Are you sure you want to logout and switch users?')) {
-            localStorage.removeItem('care_tracker_user');
-            window.location.href = '/';
-        }
-    }
+        // Handle password change form submission
+        passwordForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const currentPassword = document.getElementById('current-password').value;
+            const newPassword = document.getElementById('new-password').value;
+            const newPasswordConfirm = document.getElementById('new-password-confirm').value;
+
+            if (newPassword !== newPasswordConfirm) {
+                passwordStatusMsg.textContent = "New passwords do not match.";
+                passwordStatusMsg.className = "status-msg error";
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                passwordStatusMsg.textContent = "New password must be at least 6 characters.";
+                passwordStatusMsg.className = "status-msg error";
+                return;
+            }
+
+            passwordStatusMsg.textContent = "Updating...";
+            passwordStatusMsg.className = "status-msg";
+
+            try {
+                const response = await fetch('/api/users/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword,
+                        new_password_confirm: newPasswordConfirm
+                    })
+                });
+
+                if (response.ok) {
+                    passwordStatusMsg.textContent = "Password updated successfully!";
+                    passwordStatusMsg.className = "status-msg success";
+                    passwordForm.reset();
+                    setTimeout(() => { passwordStatusMsg.textContent = ""; }, 3000);
+                } else {
+                    const error = await response.json();
+                    passwordStatusMsg.textContent = error.detail || "Failed to change password.";
+                    passwordStatusMsg.className = "status-msg error";
+                }
+            } catch (err) {
+                console.error('Error changing password:', err);
+                passwordStatusMsg.textContent = "Network error.";
+                passwordStatusMsg.className = "status-msg error";
+            }
+        });
+    });
 </script>
 {% endblock %}
-

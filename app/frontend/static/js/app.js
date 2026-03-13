@@ -1,187 +1,55 @@
 /**
  * Care-Tracker - Frontend JavaScript
- * Handles task completion, undo actions, and UI interactions
+ * Handles task completion, undo actions, timer logic, and UI interactions.
+ *
+ * User identity is now managed server-side via JWT cookie.
+ * window.CURRENT_USER_NAME and window.CURRENT_USER_ID are set by the
+ * base template from the authenticated session.
  */
 
-// Modal state
+// Modal state (for confirmation dialogs)
 let pendingAction = null;
 
-// Timer interval
+// Timer interval handle
 let timerInterval = null;
 
-// User Identity Functions
+// ============== User Identity (server-provided) ==============
+
 /**
- * Show the user identity modal
+ * Get the current authenticated username.
+ * Falls back gracefully if somehow missing (shouldn't happen on protected pages).
  */
-function showUserModal() {
-    const modal = document.getElementById('user-modal');
-    const input = document.getElementById('user-search-input');
-    const currentName = localStorage.getItem('care_tracker_user') || '';
-    
-    input.value = currentName;
-    modal.style.display = 'flex';
-    input.focus();
-    
-    // Set up search listener
-    input.oninput = async (e) => {
-        const query = e.target.value.trim();
-        const results = document.getElementById('user-results');
-        
-        if (query.length < 1) {
-            results.innerHTML = '';
-            return;
-        }
-        
-        try {
-            const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
-            if (response.ok) {
-                const users = await response.json();
-                results.innerHTML = users.map(user => 
-                    `<div class="search-item" onclick="selectUser('${user.name}')">${user.name}</div>`
-                ).join('');
-            }
-        } catch (err) {
-            console.error('Error searching users:', err);
-        }
-    };
+function getCurrentUsername() {
+    return window.CURRENT_USER_NAME || null;
 }
 
 /**
- * Select a user from the search results
- */
-function selectUser(name) {
-    const input = document.getElementById('user-search-input');
-    input.value = name;
-    document.getElementById('user-results').innerHTML = '';
-}
-
-/**
- * Confirm and save the user identity
- */
-async function confirmUser() {
-    const name = document.getElementById('user-search-input').value.trim();
-
-    if (name) {
-        try {
-            // Register/check-in with the backend immediately
-            const response = await fetch('/api/users/check-in', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ name: name })
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                localStorage.setItem('care_tracker_user', name);
-                localStorage.setItem('care_tracker_user_id', data.user.id);
-                
-                if (data.is_new) {
-                    // Show Step 2: Alerts in the modal
-                    document.getElementById('user-step-name').style.display = 'none';
-                    document.getElementById('user-step-alerts').style.display = 'block';
-                    document.getElementById('onboarding-welcome-name').textContent = name;
-                } else {
-                    closeUserModal();
-                    updateUserDisplay();
-                }
-            } else {
-                const error = await response.json();
-                alert(`Error: ${error.detail || 'Failed to register user'}`);
-            }
-        } catch (err) {
-            console.error('Error during check-in:', err);
-            alert('Network error. Please try again.');
-        }
-    } else {
-        alert('Please enter a name');
-    }
-}
-
-/**
- * Submit onboarding alert preferences from the modal
- */
-async function submitOnboardingAlerts(enable) {
-    const userId = localStorage.getItem('care_tracker_user_id');
-    if (!userId) {
-        closeUserModal();
-        return;
-    }
-
-    if (!enable) {
-        // Just finish onboarding
-        closeUserModal();
-        updateUserDisplay();
-        return;
-    }
-
-    const phone = document.getElementById('onboarding-phone').value.trim();
-    const expiry = document.getElementById('onboarding-expiry').value || null;
-
-    if (!phone) {
-        alert('Please enter a phone number to enable alerts.');
-        return;
-    }
-
-    try {
-        const response = await fetch(`/api/users/${userId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                wants_alerts: true,
-                phone_number: phone,
-                alert_expiry_date: expiry
-            })
-        });
-
-        if (response.ok) {
-            closeUserModal();
-            updateUserDisplay();
-        } else {
-            const err = await response.json();
-            alert(`Error: ${err.detail || 'Failed to save alert settings'}`);
-        }
-    } catch (err) {
-        console.error('Error saving onboarding alerts:', err);
-        alert('Network error. Please try again.');
-    }
-}
-
-/**
- * Close the user modal and reset steps
- */
-function closeUserModal() {
-    document.getElementById('user-modal').style.display = 'none';
-    document.getElementById('user-results').innerHTML = '';
-    
-    // Reset steps for next time
-    document.getElementById('user-step-name').style.display = 'block';
-    document.getElementById('user-step-alerts').style.display = 'none';
-}
-
-/**
- * Update the user name display in the UI
+ * Update the user name display in the header.
+ * Called on load; the name is rendered server-side so this is just a safety net.
  */
 function updateUserDisplay() {
-    const name = localStorage.getItem('care_tracker_user');
+    const name = getCurrentUsername();
     const display = document.getElementById('current-user-name');
-    if (display) {
-        display.textContent = name || 'Unknown';
+    if (display && name) {
+        display.textContent = name;
     }
 }
 
 /**
- * Ensure user is set before performing actions
+ * Ensure a user is authenticated before performing actions.
+ * Since pages are now auth-protected, this should always return a name.
+ * If it doesn't, something is very wrong and we redirect to login.
  */
 function ensureUser() {
-    const name = localStorage.getItem('care_tracker_user');
+    const name = getCurrentUsername();
     if (!name) {
-        showUserModal();
+        window.location.href = '/login';
         return false;
     }
     return name;
 }
+
+// ============== Task Actions ==============
 
 /**
  * Complete a task with confirmation
@@ -190,7 +58,6 @@ function ensureUser() {
  * @param {number} petId - The pet ID
  */
 function completeTask(careItemId, taskName, petId) {
-    // No confirmation needed for completing - do it directly
     submitComplete(careItemId, taskName, petId);
 }
 
@@ -200,7 +67,6 @@ function completeTask(careItemId, taskName, petId) {
  * @param {string} taskName - The task name for display
  */
 function undoTask(careItemId, taskName) {
-    // Show confirmation modal for undo actions
     showModal(
         'Undo Completion?',
         `Are you sure you want to undo "${taskName}"? This will mark it as not complete.`,
@@ -210,9 +76,6 @@ function undoTask(careItemId, taskName) {
 
 /**
  * Show the confirmation modal
- * @param {string} title - Modal title
- * @param {string} message - Modal message
- * @param {function} onConfirm - Callback for confirm action
  */
 function showModal(title, message, onConfirm) {
     const modal = document.getElementById('confirm-modal');
@@ -223,10 +86,8 @@ function showModal(title, message, onConfirm) {
     modalTitle.textContent = title;
     modalMessage.textContent = message;
     
-    // Store the pending action
     pendingAction = onConfirm;
     
-    // Set up confirm button
     confirmBtn.onclick = () => {
         const action = pendingAction;
         closeModal();
@@ -249,9 +110,6 @@ function closeModal() {
 
 /**
  * Submit task completion to API
- * @param {number} careItemId - The care item ID
- * @param {string} taskName - The task name
- * @param {number} petId - The pet ID
  */
 async function submitComplete(careItemId, taskName, petId) {
     const username = ensureUser();
@@ -266,10 +124,7 @@ async function submitComplete(careItemId, taskName, petId) {
         });
         
         if (response.ok) {
-            // Check if we should prompt for a timer
             await handleTimerPrompts(taskName, petId);
-            
-            // Refresh the page to show updated status
             location.reload();
         } else {
             const error = await response.json();
@@ -284,12 +139,8 @@ async function submitComplete(careItemId, taskName, petId) {
 /**
  * Handle logic for prompting timers after task completion
  * Centralized timer logic for medication/feeding coordination
- * 
- * @param {string} taskName - The completed task name
- * @param {number} petId - The pet ID
  */
 async function handleTimerPrompts(taskName, petId) {
-    // Check status of Denamarin and meals
     const denaCard = findTaskCard('Denamarin', petId);
     const breakfastCard = findTaskCard('Breakfast', petId);
     const dinnerCard = findTaskCard('Dinner', petId);
@@ -298,9 +149,7 @@ async function handleTimerPrompts(taskName, petId) {
     const isBreakfastCompleted = breakfastCard && breakfastCard.classList.contains('completed');
     const isDinnerCompleted = dinnerCard && dinnerCard.classList.contains('completed');
     
-    // === MEAL COMPLETION: Check if we need empty stomach timer for Denamarin ===
     if (taskName === 'Breakfast' || taskName === 'Dinner') {
-        // Only prompt if Denamarin hasn't been given yet
         if (!isDenaCompleted) {
             const mealName = taskName.toLowerCase();
             if (confirm(`${taskName} done! REMOVE FOOD NOW so she doesn't eat right before her meds. Start 2h timer? (Kitchen LED flashes green when done)`)) {
@@ -308,10 +157,7 @@ async function handleTimerPrompts(taskName, petId) {
             }
         }
     } 
-    
-    // === DENAMARIN COMPLETION: Check if we need timer for next meal ===
     else if (taskName === 'Denamarin') {
-        // Only prompt if there's still a meal to come
         const mealsRemaining = !isBreakfastCompleted || !isDinnerCompleted;
         
         if (mealsRemaining) {
@@ -319,7 +165,6 @@ async function handleTimerPrompts(taskName, petId) {
                 await startTimer(petId, 1, 'Next meal ready');
             }
         }
-        // If both meals are done, no timer needed - she's set for the night!
     }
 }
 
@@ -327,27 +172,21 @@ async function handleTimerPrompts(taskName, petId) {
  * Find a task card in the DOM by task name and pet section
  */
 function findTaskCard(taskName, petId) {
-    // Look for the specific pet section
     const petSections = document.querySelectorAll('.pet-section');
     for (const section of petSections) {
-        // Find the pet-timer or pet-header to identify the pet ID
         const timerContainer = section.querySelector(`[id^="pet-timer-${petId}"]`);
         if (timerContainer) {
             const cards = section.querySelectorAll('.task-card');
             for (const card of cards) {
                 const nameElement = card.querySelector('.task-name');
                 if (nameElement) {
-                    // Fix: Use a more robust way to get just the task name, 
-                    // excluding child elements like badges.
-                    // We'll clone the node and remove children to get only the direct text.
+                    // Clone and strip child elements to get only the direct text content
                     const clone = nameElement.cloneNode(true);
                     while (clone.children.length > 0) {
                         clone.removeChild(clone.children[0]);
                     }
                     const directText = clone.textContent.trim();
-                    const match = directText === taskName;
-                    
-                    if (match) {
+                    if (directText === taskName) {
                         return card;
                     }
                 }
@@ -359,7 +198,6 @@ function findTaskCard(taskName, petId) {
 
 /**
  * Submit task undo to API
- * @param {number} careItemId - The care item ID
  */
 async function submitUndo(careItemId) {
     const username = ensureUser();
@@ -374,7 +212,6 @@ async function submitUndo(careItemId) {
         });
         
         if (response.ok) {
-            // Refresh the page to show updated status
             location.reload();
         } else {
             const error = await response.json();
@@ -398,9 +235,7 @@ async function startTimer(petId, hours, label) {
         });
         
         if (response.ok) {
-            const data = await response.json();
-            // The reload in submitComplete will handle showing the timer
-            return data;
+            return await response.json();
         } else {
             console.error('Failed to set timer on server');
         }
@@ -423,7 +258,6 @@ async function clearTimer(petId) {
             if (timerEl) {
                 timerEl.style.display = 'none';
             }
-            // Check if any other timers are active to keep interval running or not
             checkAnyActiveTimers();
         }
     } catch (err) {
@@ -445,8 +279,6 @@ function initTimerDisplay(petId, label, endTimeStr) {
     
     labelEl.textContent = label;
     timerEl.style.display = 'block';
-    
-    // Store endTime on the element for easy access during ticks
     timerEl.dataset.endTime = endTime;
     
     updateTimerTick(petId, endTime);
@@ -456,9 +288,6 @@ function initTimerDisplay(petId, label, endTimeStr) {
     }
 }
 
-/**
- * Update a specific timer's countdown
- */
 function updateTimerTick(petId, endTime) {
     const displayEl = document.getElementById(`timer-display-${petId}`);
     const timerEl = document.getElementById(`pet-timer-${petId}`);
@@ -476,7 +305,6 @@ function updateTimerTick(petId, endTime) {
     
     const h = Math.floor(remaining / 3600000);
     const m = Math.floor((remaining % 3600000) / 60000);
-    const s = Math.floor((remaining % 60000) / 10000); // Note: Fix for formatting
     const s_val = Math.floor((remaining % 60000) / 1000);
     
     displayEl.textContent = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s_val.toString().padStart(2, '0')}`;
@@ -484,9 +312,6 @@ function updateTimerTick(petId, endTime) {
     timerEl.classList.remove('timer-ready');
 }
 
-/**
- * Tick loop for all active timers
- */
 function tickAllTimers() {
     let hasActive = false;
     
@@ -505,9 +330,6 @@ function tickAllTimers() {
     }
 }
 
-/**
- * Check if any timers are still active
- */
 function checkAnyActiveTimers() {
     let hasActive = false;
     const timerElements = document.querySelectorAll('.pet-timer');
@@ -522,9 +344,6 @@ function checkAnyActiveTimers() {
     }
 }
 
-/**
- * Initialize timers from server data on page load
- */
 function checkTimers() {
     if (typeof serverPetTimers !== 'undefined') {
         Object.keys(serverPetTimers).forEach(petId => {
@@ -536,67 +355,49 @@ function checkTimers() {
     }
 }
 
-// Close modal when clicking outside
+// ============== Modal Close Handlers ==============
+
 document.addEventListener('click', (e) => {
     const confirmModal = document.getElementById('confirm-modal');
-    const userModal = document.getElementById('user-modal');
-    
     if (e.target === confirmModal) {
         closeModal();
     }
-    if (e.target === userModal) {
-        const currentName = localStorage.getItem('care_tracker_user');
-        if (currentName) {
-            closeUserModal();
-        }
-    }
 });
 
-// Close modal with Escape key
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closeModal();
-        const currentName = localStorage.getItem('care_tracker_user');
-        if (currentName) {
-            closeUserModal();
-        }
     }
 });
 
+// ============== Auto-refresh ==============
+
 /**
  * Periodically refresh the dashboard to keep status current,
- * but only if the user isn't currently interacting with a modal or settings.
+ * but only if the user isn't currently interacting with a modal.
  */
 function setupAutoRefresh() {
     setInterval(() => {
-        // 1. Only refresh on the Dashboard
         if (window.location.pathname !== '/') return;
 
-        // 2. Don't refresh if a modal is open
-        const userModal = document.getElementById('user-modal');
         const confirmModal = document.getElementById('confirm-modal');
-        
-        const isUserModalOpen = userModal && userModal.style.display === 'flex';
         const isConfirmModalOpen = confirmModal && confirmModal.style.display === 'flex';
 
-        if (isUserModalOpen || isConfirmModalOpen) {
+        if (isConfirmModalOpen) {
             console.log('Auto-refresh skipped: Modal is open');
             return;
         }
 
-        // All clear, refresh the dashboard data
         console.log('Auto-refreshing dashboard...');
         location.reload();
-    }, 60000); // Every 60 seconds
+    }, 60000);
 }
 
-// Initialize on load
+// ============== Initialization ==============
+
 window.addEventListener('load', () => {
     console.log('Care-Tracker loaded');
     updateUserDisplay();
-    if (!localStorage.getItem('care_tracker_user')) {
-        showUserModal();
-    }
     checkTimers();
     setupAutoRefresh();
 });

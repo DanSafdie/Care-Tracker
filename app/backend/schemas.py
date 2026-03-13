@@ -41,7 +41,28 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
+    """Legacy check-in schema (kept for backward compat in task completion flows)."""
     pass
+
+
+class UserSignup(BaseModel):
+    """Signup requires name + password typed twice for confirmation."""
+    name: str
+    password: str
+    password_confirm: str
+
+
+class UserLogin(BaseModel):
+    """Login with name + password."""
+    name: str
+    password: str
+
+
+class ChangePassword(BaseModel):
+    """Change password: must supply current password + new password twice."""
+    current_password: str
+    new_password: str
+    new_password_confirm: str
 
 
 class UserUpdate(BaseModel):
