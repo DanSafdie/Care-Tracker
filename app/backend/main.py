@@ -48,11 +48,13 @@ from auth import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create FastAPI app
+# Create FastAPI app (SEC-04: docs disabled to avoid exposing endpoint map publicly)
 app = FastAPI(
     title="Care-Tracker",
     description="Track pet care tasks for the whole household",
-    version="1.0.0"
+    version="1.0.0",
+    docs_url=None,
+    redoc_url=None,
 )
 
 # ============== Helper Functions ==============

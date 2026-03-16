@@ -9,6 +9,10 @@
 (WorkoutTracker). Any HTTPS/proxy work must interplay with that existing setup —
 ask before making changes that could affect the other project.
 
+**Access model:** Public signup stays open. Anyone with an account can see pet
+care data (dogs). Future meds/health data will be scoped per-user via
+permissions columns in the DB — not by restricting who can sign up.
+
 ---
 
 ## P0 — Critical (do immediately)
@@ -16,13 +20,18 @@ ask before making changes that could affect the other project.
 These matter right now, regardless of the meds expansion.
 
 ### SEC-01: Add HTTPS via reverse proxy
+- **Status:** DEFERRED — requires a dedicated infrastructure session.
 - **Risk:** Passwords, JWT cookies, and all data travel in plaintext over the public internet. With future med data, this becomes a PII leak vector.
 - **Scope:** Infrastructure / Docker config only — no app code changes.
 - **Note:** Nginx is already running in a sibling Docker project (WorkoutTracker). Options:
   1. **Extend the existing nginx** to also proxy Care-Tracker (shared reverse proxy).
   2. **Switch to a shared Caddy instance** that handles both projects (Caddy auto-provisions Let's Encrypt).
-  3. **Add a separate proxy** just for Care-Tracker (simpler but duplicates infra).
-- **Depends on:** Understanding the existing nginx setup first. SEC-06 should follow once HTTPS is live.
+  3. **Add a separate proxy** just for Care-Tracker (simpler but duplicates infra). (assuming its just more processing power, no big deal. this would be  prefered. )
+- **Architecture decision (2026-03-16):** The ideal pattern is a single shared reverse
+  proxy (Caddy or nginx) in its own Docker Compose project with an external Docker
+  network that other project containers join. This avoids duplicating proxy infra per
+  project but requires planning across WorkoutTracker + Care-Tracker together.
+- **Depends on:** Understanding the existing nginx setup first. SEC-08 should follow once HTTPS is live.
 - **Files:** `docker-compose.yml`, new proxy config, possibly the WorkoutTracker project.
 
 ### SEC-02: Add authentication to all API endpoints
@@ -60,13 +69,14 @@ These matter right now, regardless of the meds expansion.
 These become important with the meds expansion — health data raises the stakes.
 
 ### SEC-05: Restrict or disable public signup
-- **Risk:** Anyone on the internet can create an account and access all data. Once meds are tracked, that's an open door to health information.
-- **Scope:** `app/backend/main.py`, `app/frontend/templates/login.html`.
-- **Options (pick one):**
-  - **Invite code:** Require a shared household code (set via env var) during signup. Simplest.
-  - **Admin approval:** New accounts start disabled; existing user must approve.
-  - **Disable signup:** Remove the form entirely; create users via CLI or admin panel.
-- **Files:** `app/backend/main.py`, `app/frontend/templates/login.html`, possibly `app/backend/auth.py`.
+- **Status:** SUPERSEDED — public signup stays open by design.
+- **Original risk:** Anyone on the internet can create an account and access all data.
+- **Decision (2026-03-16):** Pet care data (dogs) is intentionally public to any
+  signed-in user. Future med/health data will be scoped per-user via a permissions
+  or ownership column in the database, so open signup is not the threat vector —
+  data visibility is. SEC-02 (auth on endpoints) already prevents unauthenticated
+  access. A permissions/RBAC model will be added when meds tracking is built.
+- **No code changes needed for this item.**
 
 ### SEC-06: Secure the `check-in` endpoint / SMS abuse
 - **Risk:** `POST /api/users/check-in` is unauthenticated and can trigger Twilio SMS to arbitrary phone numbers, costing real money. Also creates users freely.
@@ -84,10 +94,11 @@ These become important with the meds expansion — health data raises the stakes
 - **Files:** `app/backend/main.py`, `requirements.txt`.
 
 ### SEC-08: Add `secure` flag to session cookies
+- **Status:** DEFERRED — depends on SEC-01 (HTTPS must be working first).
 - **Risk:** Without `secure=True`, the JWT cookie is sent over HTTP and can be intercepted.
-- **Depends on:** SEC-01 (HTTPS must be working first).
 - **Scope:** Two `set_cookie()` calls in `app/backend/main.py` (login and signup).
-- **Change:** Add `secure=True` to both.
+- **Change:** Add `secure=True` to both. Cannot enable until HTTPS is live or the
+  cookie won't be sent over plain HTTP, locking everyone out.
 - **Files:** `app/backend/main.py`.
 
 ### SEC-09: Add security headers middleware
