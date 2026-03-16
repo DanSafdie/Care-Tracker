@@ -84,11 +84,11 @@ async def catch_exceptions_middleware(request: Request, call_next):
     except Exception as exc:
         print(f"!!! EXCEPTION CAUGHT BY MIDDLEWARE !!!")
         print(traceback.format_exc())
-        # If it's an API request, return JSON
+        # If it's an API request, return JSON (SEC-03: no traceback in response)
         if request.url.path.startswith("/api/"):
             return JSONResponse(
                 status_code=500,
-                content={"detail": str(exc), "traceback": traceback.format_exc()}
+                content={"detail": "Internal server error"}
             )
         raise exc
 
@@ -438,7 +438,8 @@ async def account_page(request: Request,
 
 
 @app.get("/api/history/grid")
-async def get_grid_history_api(page: int = 1, page_size: int = 30, db: Session = Depends(get_db)):
+async def get_grid_history_api(page: int = 1, page_size: int = 30, db: Session = Depends(get_db),
+                               current_user: User = Depends(get_current_user)):
     """API endpoint for grid history data."""
     return crud.get_grid_history(db, page=page, page_size=page_size)
 
@@ -446,19 +447,22 @@ async def get_grid_history_api(page: int = 1, page_size: int = 30, db: Session =
 # ============== API Routes - Pets ==============
 
 @app.get("/api/pets", response_model=List[PetResponse])
-async def get_pets(db: Session = Depends(get_db)):
+async def get_pets(db: Session = Depends(get_db),
+                   current_user: User = Depends(get_current_user)):
     """Get all active pets."""
     return crud.get_pets(db)
 
 
 @app.post("/api/pets", response_model=PetResponse)
-async def create_pet(pet: PetCreate, db: Session = Depends(get_db)):
+async def create_pet(pet: PetCreate, db: Session = Depends(get_db),
+                     current_user: User = Depends(get_current_user)):
     """Create a new pet."""
     return crud.create_pet(db, pet)
 
 
 @app.get("/api/pets/{pet_id}", response_model=PetResponse)
-async def get_pet(pet_id: int, db: Session = Depends(get_db)):
+async def get_pet(pet_id: int, db: Session = Depends(get_db),
+                  current_user: User = Depends(get_current_user)):
     """Get a specific pet by ID."""
     pet = crud.get_pet(db, pet_id)
     if not pet:
@@ -471,7 +475,8 @@ async def set_pet_timer(
     pet_id: int,
     hours: float,
     label: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Set a timer for a pet."""
     pet = crud.set_pet_timer(db, pet_id, hours, label)
@@ -483,7 +488,8 @@ async def set_pet_timer(
 
 
 @app.delete("/api/pets/{pet_id}/timer")
-async def clear_pet_timer(pet_id: int, db: Session = Depends(get_db)):
+async def clear_pet_timer(pet_id: int, db: Session = Depends(get_db),
+                          current_user: User = Depends(get_current_user)):
     """Clear a timer for a pet."""
     pet = crud.clear_pet_timer(db, pet_id)
     if not pet:
@@ -496,7 +502,8 @@ async def clear_pet_timer(pet_id: int, db: Session = Depends(get_db)):
 # ============== API Routes - Users ==============
 
 @app.get("/api/users/search", response_model=List[UserResponse])
-async def search_users(q: str = "", db: Session = Depends(get_db)):
+async def search_users(q: str = "", db: Session = Depends(get_db),
+                       current_user: User = Depends(get_current_user)):
     """Search for existing usernames."""
     return crud.search_users(db, q)
 
@@ -508,7 +515,8 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
 
 
 @app.post("/api/users/check-in", response_model=CheckInResponse)
-async def check_in_user(user: UserCreate, db: Session = Depends(get_db)):
+async def check_in_user(user: UserCreate, db: Session = Depends(get_db),
+                        current_user: User = Depends(get_current_user)):
     """Register or update a user's presence (legacy endpoint for task flows)."""
     db_user, is_new = crud.get_or_create_user(
         db, 
@@ -526,7 +534,8 @@ async def check_in_user(user: UserCreate, db: Session = Depends(get_db)):
 
 
 @app.get("/api/users/by-name/{name}", response_model=UserResponse)
-async def get_user_by_name(name: str, db: Session = Depends(get_db)):
+async def get_user_by_name(name: str, db: Session = Depends(get_db),
+                           current_user: User = Depends(get_current_user)):
     """Get a user by their name."""
     user = crud.get_user_by_name(db, name)
     if not user:
@@ -578,13 +587,15 @@ async def change_password(
 # ============== API Routes - Care Items ==============
 
 @app.get("/api/care-items", response_model=List[CareItemResponse])
-async def get_care_items(pet_id: Optional[int] = None, db: Session = Depends(get_db)):
+async def get_care_items(pet_id: Optional[int] = None, db: Session = Depends(get_db),
+                         current_user: User = Depends(get_current_user)):
     """Get care items, optionally filtered by pet."""
     return crud.get_care_items(db, pet_id=pet_id)
 
 
 @app.post("/api/care-items", response_model=CareItemResponse)
-async def create_care_item(care_item: CareItemCreate, db: Session = Depends(get_db)):
+async def create_care_item(care_item: CareItemCreate, db: Session = Depends(get_db),
+                           current_user: User = Depends(get_current_user)):
     """Create a new care item for a pet."""
     # Verify pet exists
     pet = crud.get_pet(db, care_item.pet_id)
@@ -596,7 +607,8 @@ async def create_care_item(care_item: CareItemCreate, db: Session = Depends(get_
 # ============== API Routes - Task Status ==============
 
 @app.get("/api/status")
-async def get_daily_status(db: Session = Depends(get_db)):
+async def get_daily_status(db: Session = Depends(get_db),
+                           current_user: User = Depends(get_current_user)):
     """
     Get the current day's status for all pets and tasks.
     This is the main endpoint for the dashboard.
@@ -613,7 +625,8 @@ async def complete_task(
     care_item_id: int,
     completed_by: Optional[str] = None,
     notes: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Mark a task as completed for today.
@@ -642,7 +655,8 @@ async def undo_task(
     care_item_id: int,
     completed_by: Optional[str] = None,
     notes: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Undo a completed task for today.
@@ -675,7 +689,8 @@ async def get_history(
     pet_id: Optional[int] = None,
     care_item_id: Optional[int] = None,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get task history with optional filters.

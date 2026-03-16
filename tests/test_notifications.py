@@ -68,8 +68,9 @@ class TestNotifications:
         assert pet.timer_alert_sent is True
 
     @patch("main.send_sms")
-    def test_signup_confirmation_sms(self, mock_send_sms, client):
+    def test_signup_confirmation_sms(self, mock_send_sms, auth_client):
         """Test that an SMS is sent when a new user signs up with alerts via check-in."""
+        client, _ = auth_client
         payload = {
             "name": "New Tester",
             "phone_number": "+15551112222",
