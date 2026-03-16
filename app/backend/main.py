@@ -139,35 +139,32 @@ def check_timers_job():
             Pet.timer_alert_sent == False
         ).all()
         
-        if not expired_pets:
-            return
+        # Send alerts if there are new expired timers
+        if expired_pets:
+            # Get users who should receive alerts
+            users = db.query(User).filter(
+                User.wants_alerts == True,
+                User.phone_number != None,
+                (User.alert_expiry_date == None) | (User.alert_expiry_date >= get_care_day())
+            ).all()
             
-        # Get users who should receive alerts
-        users = db.query(User).filter(
-            User.wants_alerts == True,
-            User.phone_number != None,
-            (User.alert_expiry_date == None) | (User.alert_expiry_date >= get_care_day())
-        ).all()
-        
-        if not users:
-            # Still mark as alerted so they don't keep trying every minute
-            for pet in expired_pets:
-                pet.timer_alert_sent = True
+            if users:
+                for pet in expired_pets:
+                    message = f"⏰ Timer for {pet.name} ({pet.timer_label}) has run out!"
+                    for user in users:
+                        send_sms(user.phone_number, message)
+                    
+                    # Mark the timer as alerted so it doesn't alert again
+                    # BUT keep the timer fields so it stays "READY!" in the UI
+                    pet.timer_alert_sent = True
+            else:
+                # Still mark as alerted so they don't keep trying every minute
+                for pet in expired_pets:
+                    pet.timer_alert_sent = True
+            
             db.commit()
-            return
-
-        for pet in expired_pets:
-            message = f"⏰ Timer for {pet.name} ({pet.timer_label}) has run out!"
-            for user in users:
-                send_sms(user.phone_number, message)
-            
-            # Mark the timer as alerted so it doesn't alert again
-            # BUT keep the timer fields so it stays "READY!" in the UI
-            pet.timer_alert_sent = True
         
-        db.commit()
-        
-        # Sync LED status after checking timers
+        # ALWAYS sync LED status, regardless of whether there were new alerts
         sync_led_status(db)
     except Exception as e:
         print(f"Error in check_timers_job: {e}")
