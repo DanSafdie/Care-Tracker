@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Care-Tracker</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=auth">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">🐾 Care-Tracker</div>
+        </nav>
+    </header>
+
+    <main>
+        <div class="auth-container">
+            <!-- Tab navigation between Login and Signup -->
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Log In</button>
+                <button class="auth-tab" id="tab-signup" onclick="switchTab('signup')">Sign Up</button>
+            </div>
+
+            {% if error %}
+            <div class="auth-error">{{ error }}</div>
+            {% endif %}
+            {% if success %}
+            <div class="auth-success">{{ success }}</div>
+            {% endif %}
+
+            <!-- Login Form -->
+            <form id="form-login" class="auth-form" method="POST" action="/login">
+                <div class="form-group">
+                    <label for="login-name">Name</label>
+                    <input type="text" id="login-name" name="name" required placeholder="First & Last Name" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" name="password" required placeholder="Enter your password" autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn btn-primary auth-btn">Log In</button>
+            </form>
+
+            <!-- Signup Form -->
+            <form id="form-signup" class="auth-form" method="POST" action="/signup" style="display: none;">
+                <div class="form-group">
+                    <label for="signup-name">Name</label>
+                    <input type="text" id="signup-name" name="name" required placeholder="First & Last Name" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="signup-password">Password</label>
+                    <input type="password" id="signup-password" name="password" required placeholder="Create a password (min 6 chars)" autocomplete="new-password" minlength="6">
+                </div>
+                <div class="form-group">
+                    <label for="signup-password-confirm">Confirm Password</label>
+                    <input type="password" id="signup-password-confirm" name="password_confirm" required placeholder="Type your password again" autocomplete="new-password" minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary auth-btn">Create Account</button>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <p>Care Day: {{ care_day.strftime('%A, %B %d, %Y') if care_day else 'Unknown' }} | Day resets at 4:00 AM</p>
+    </footer>
+
+    <style>
+        .auth-container {
+            max-width: 420px;
+            margin: 40px auto;
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .auth-tabs {
+            display: flex;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 16px;
+            text-align: center;
+            font-size: 1rem;
+            font-weight: 600;
+            background: var(--gray-100);
+            border: none;
+            cursor: pointer;
+            color: var(--gray-500);
+            transition: all 0.2s;
+        }
+
+        .auth-tab.active {
+            background: white;
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+            margin-bottom: -2px;
+        }
+
+        .auth-tab:hover:not(.active) {
+            background: var(--gray-200);
+        }
+
+        .auth-form {
+            padding: 30px;
+        }
+
+        .auth-form .form-group {
+            margin-bottom: 20px;
+        }
+
+        .auth-form label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .auth-form input[type="text"],
+        .auth-form input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .auth-form input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.1);
+        }
+
+        .auth-btn {
+            width: 100%;
+            padding: 14px;
+            font-size: 1.05rem;
+            margin-top: 10px;
+        }
+
+        .auth-error {
+            background: #fce4e4;
+            color: var(--danger);
+            padding: 12px 30px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .auth-success {
+            background: var(--success-light);
+            color: var(--success);
+            padding: 12px 30px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+    </style>
+
+    <script>
+        function switchTab(tab) {
+            const loginForm = document.getElementById('form-login');
+            const signupForm = document.getElementById('form-signup');
+            const loginTab = document.getElementById('tab-login');
+            const signupTab = document.getElementById('tab-signup');
+
+            if (tab === 'login') {
+                loginForm.style.display = 'block';
+                signupForm.style.display = 'none';
+                loginTab.classList.add('active');
+                signupTab.classList.remove('active');
+            } else {
+                loginForm.style.display = 'none';
+                signupForm.style.display = 'block';
+                signupTab.classList.add('active');
+                loginTab.classList.remove('active');
+            }
+        }
+
+        // Client-side password confirmation check before submit
+        document.getElementById('form-signup').addEventListener('submit', function(e) {
+            const pw = document.getElementById('signup-password').value;
+            const pwConfirm = document.getElementById('signup-password-confirm').value;
+            if (pw !== pwConfirm) {
+                e.preventDefault();
+                alert('Passwords do not match.');
+                return;
+            }
+            if (pw.length < 6) {
+                e.preventDefault();
+                alert('Password must be at least 6 characters long.');
+                return;
+            }
+        });
+
+        // If the server returned a tab hint (e.g. signup error), switch to that tab
+        {% if tab == 'signup' %}
+        switchTab('signup');
+        {% endif %}
+    </script>
+</body>
+</html>

@@ -10,6 +10,7 @@ from typing import List, Optional, Dict, Any
 from models import Pet, CareItem, TaskLog, User
 from schemas import PetCreate, CareItemCreate, UserCreate, UserUpdate
 from utils import get_care_day
+from auth import hash_password, verify_password
 
 
 # ============== Pet Operations ==============
@@ -117,12 +118,20 @@ def get_or_create_user(
     wants_alerts: bool = False,
     alert_expiry_date: date = None
 ) -> tuple[User, bool]:
-    """Get an existing user or create a new one."""
+    """
+    Get an existing user or create a new one.
+    When auto-creating (e.g. from task completion), a random placeholder password
+    is assigned; the user should sign up properly or be given the generated creds.
+    """
+    import secrets as _secrets
+
     db_user = get_user_by_name(db, name)
     is_new = False
     if not db_user:
+        placeholder_pw = _secrets.token_urlsafe(16)
         db_user = User(
-            name=name, 
+            name=name,
+            password_hash=hash_password(placeholder_pw),
             phone_number=phone_number,
             wants_alerts=wants_alerts,
             alert_expiry_date=alert_expiry_date
@@ -145,6 +154,43 @@ def get_or_create_user(
         db.commit()
         db.refresh(db_user)
     return db_user, is_new
+
+
+def create_user_with_password(db: Session, name: str, password: str) -> User:
+    """Create a new user with a hashed password (signup flow)."""
+    db_user = User(
+        name=name,
+        password_hash=hash_password(password),
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+def authenticate_user(db: Session, name: str, password: str) -> Optional[User]:
+    """Verify credentials. Returns the User if valid, None otherwise."""
+    db_user = get_user_by_name(db, name)
+    if not db_user:
+        return None
+    if not verify_password(password, db_user.password_hash):
+        return None
+    # Bump last_seen on successful login
+    db_user.last_seen = datetime.now()
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+def change_user_password(db: Session, user_id: int, new_password: str) -> User:
+    """Set a new hashed password for the given user."""
+    db_user = get_user(db, user_id)
+    if not db_user:
+        return None
+    db_user.password_hash = hash_password(new_password)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
 
 
 def update_user(db: Session, user_id: int, user_update: UserUpdate) -> Optional[User]:

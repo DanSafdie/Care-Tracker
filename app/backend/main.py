@@ -14,7 +14,7 @@ Features:
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from datetime import date, datetime
 from typing import List, Optional
@@ -30,13 +30,19 @@ from schemas import (
     CareItemResponse, CareItemCreate,
     TaskLogResponse, TaskStatus, DailyStatus,
     HistoryEntry, UserResponse, UserCreate, UserUpdate,
-    CheckInResponse
+    CheckInResponse, UserSignup, UserLogin, ChangePassword
 )
 import crud
 from utils import get_care_day, to_local_time
 from seed_data import run_seed
 from sms_utils import send_sms
 from hass_utils import call_hass_script
+from auth import (
+    get_current_user, get_optional_user,
+    create_access_token, verify_password,
+    validate_password_strength, hash_password,
+    COOKIE_NAME,
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -64,11 +70,15 @@ def send_user_alert_confirmation(user: User):
     logger.info(f"Sending alert confirmation to {user.name} ({user.phone_number})")
     send_sms(user.phone_number, message)
 
-# Exception handling middleware for debugging
+# Exception handling middleware for debugging and auth redirects
 @app.middleware("http")
 async def catch_exceptions_middleware(request: Request, call_next):
     try:
-        return await call_next(request)
+        response = await call_next(request)
+        # For non-API 401s, redirect to login page instead of showing raw error
+        if response.status_code == 401 and not request.url.path.startswith("/api/"):
+            return RedirectResponse(url="/login", status_code=302)
+        return response
     except Exception as exc:
         print(f"!!! EXCEPTION CAUGHT BY MIDDLEWARE !!!")
         print(traceback.format_exc())
@@ -78,8 +88,6 @@ async def catch_exceptions_middleware(request: Request, call_next):
                 status_code=500,
                 content={"detail": str(exc), "traceback": traceback.format_exc()}
             )
-        # Otherwise, we'll let it raise so we can see it in the console/logs
-        # but for a production-like feel we could return a 500 HTML page
         raise exc
 
 # Mount static files (CSS, JS)
@@ -249,10 +257,112 @@ async def startup_event():
             db.close()
 
 
-# ============== Web UI Routes ==============
+# ============== Auth Routes (HTML pages) ==============
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request, error: str = None, success: str = None,
+                     user: User = Depends(get_optional_user)):
+    """Render the login / signup page. Redirect to dashboard if already logged in."""
+    if user:
+        return RedirectResponse(url="/", status_code=302)
+    care_day = get_care_day()
+    return templates.TemplateResponse("login.html", {
+        "request": request,
+        "care_day": care_day,
+        "now": to_local_time(datetime.utcnow()),
+        "error": error,
+        "success": success,
+    })
+
+
+@app.post("/login")
+async def login_submit(request: Request, db: Session = Depends(get_db)):
+    """Handle login form POST. Sets JWT cookie on success."""
+    form = await request.form()
+    name = form.get("name", "").strip()
+    password = form.get("password", "")
+
+    if not name or not password:
+        return templates.TemplateResponse("login.html", {
+            "request": request, "care_day": get_care_day(),
+            "now": to_local_time(datetime.utcnow()),
+            "error": "Name and password are required.",
+            "tab": "login",
+        })
+
+    user = crud.authenticate_user(db, name, password)
+    if not user:
+        return templates.TemplateResponse("login.html", {
+            "request": request, "care_day": get_care_day(),
+            "now": to_local_time(datetime.utcnow()),
+            "error": "Invalid name or password.",
+            "tab": "login",
+        })
+
+    token = create_access_token(user.id, user.name)
+    response = RedirectResponse(url="/", status_code=302)
+    response.set_cookie(
+        key=COOKIE_NAME, value=token,
+        httponly=True, samesite="lax", max_age=60 * 60 * 24 * 30,
+    )
+    return response
+
+
+@app.post("/signup")
+async def signup_submit(request: Request, db: Session = Depends(get_db)):
+    """Handle signup form POST. Creates user, sets JWT cookie."""
+    form = await request.form()
+    name = form.get("name", "").strip()
+    password = form.get("password", "")
+    password_confirm = form.get("password_confirm", "")
+
+    # Validation
+    error = None
+    if not name:
+        error = "Name is required."
+    elif len(name) < 2:
+        error = "Name must be at least 2 characters."
+    elif password != password_confirm:
+        error = "Passwords do not match."
+    else:
+        error = validate_password_strength(password)
+
+    if not error:
+        existing = crud.get_user_by_name(db, name)
+        if existing:
+            error = "An account with that name already exists. Please log in."
+
+    if error:
+        return templates.TemplateResponse("login.html", {
+            "request": request, "care_day": get_care_day(),
+            "now": to_local_time(datetime.utcnow()),
+            "error": error,
+            "tab": "signup",
+        })
+
+    user = crud.create_user_with_password(db, name, password)
+    token = create_access_token(user.id, user.name)
+    response = RedirectResponse(url="/", status_code=302)
+    response.set_cookie(
+        key=COOKIE_NAME, value=token,
+        httponly=True, samesite="lax", max_age=60 * 60 * 24 * 30,
+    )
+    return response
+
+
+@app.get("/logout")
+async def logout(request: Request):
+    """Clear session cookie and redirect to login."""
+    response = RedirectResponse(url="/login", status_code=302)
+    response.delete_cookie(COOKIE_NAME)
+    return response
+
+
+# ============== Web UI Routes (protected) ==============
 
 @app.get("/", response_class=HTMLResponse)
-async def home(request: Request, db: Session = Depends(get_db)):
+async def home(request: Request, db: Session = Depends(get_db),
+               current_user: User = Depends(get_current_user)):
     """Main dashboard showing today's tasks."""
     care_day = get_care_day()
     daily_status = crud.get_daily_summary(db, care_day)
@@ -261,7 +371,8 @@ async def home(request: Request, db: Session = Depends(get_db)):
         "request": request,
         "care_day": care_day,
         "daily_status": daily_status,
-        "now": to_local_time(datetime.utcnow())
+        "now": to_local_time(datetime.utcnow()),
+        "current_user": current_user,
     })
 
 
@@ -270,7 +381,8 @@ async def history_page(
     request: Request, 
     view: str = "grid", 
     page: int = 1, 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """History page showing past task completions."""
     care_day = get_care_day()
@@ -282,7 +394,8 @@ async def history_page(
             "view": view,
             "grid_data": grid_data,
             "care_day": care_day,
-            "now": to_local_time(datetime.utcnow())
+            "now": to_local_time(datetime.utcnow()),
+            "current_user": current_user,
         })
     else:
         # List view (existing logic)
@@ -304,18 +417,21 @@ async def history_page(
             "view": view,
             "care_day": care_day,
             "history_entries": history_entries,
-            "now": to_local_time(datetime.utcnow())
+            "now": to_local_time(datetime.utcnow()),
+            "current_user": current_user,
         })
 
 
 @app.get("/account", response_class=HTMLResponse)
-async def account_page(request: Request):
+async def account_page(request: Request,
+                       current_user: User = Depends(get_current_user)):
     """Render the account management page."""
     care_day = get_care_day()
     return templates.TemplateResponse("account.html", {
         "request": request,
         "care_day": care_day,
-        "now": to_local_time(datetime.utcnow())
+        "now": to_local_time(datetime.utcnow()),
+        "current_user": current_user,
     })
 
 
@@ -383,9 +499,15 @@ async def search_users(q: str = "", db: Session = Depends(get_db)):
     return crud.search_users(db, q)
 
 
+@app.get("/api/users/me", response_model=UserResponse)
+async def get_current_user_info(current_user: User = Depends(get_current_user)):
+    """Return the currently authenticated user's profile."""
+    return current_user
+
+
 @app.post("/api/users/check-in", response_model=CheckInResponse)
 async def check_in_user(user: UserCreate, db: Session = Depends(get_db)):
-    """Register or update a user's presence."""
+    """Register or update a user's presence (legacy endpoint for task flows)."""
     db_user, is_new = crud.get_or_create_user(
         db, 
         user.name, 
@@ -411,18 +533,44 @@ async def get_user_by_name(name: str, db: Session = Depends(get_db)):
 
 
 @app.put("/api/users/{user_id}", response_model=UserResponse)
-async def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get_db)):
+async def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get_db),
+                      current_user: User = Depends(get_current_user)):
     """Update a user's profile and notification settings."""
+    # Users can only update their own profile
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="You can only update your own profile")
+
     user = crud.update_user(db, user_id, user_update)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
     # Trigger SMS whenever alert settings are "saved" (updated)
-    # The user specifically requested this to re-trigger on any save of alert info
     if user.wants_alerts and user.phone_number:
         send_user_alert_confirmation(user)
         
     return user
+
+
+@app.post("/api/users/change-password")
+async def change_password(
+    payload: ChangePassword,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Change the authenticated user's password."""
+    # Verify current password
+    if not verify_password(payload.current_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect.")
+
+    if payload.new_password != payload.new_password_confirm:
+        raise HTTPException(status_code=400, detail="New passwords do not match.")
+
+    strength_error = validate_password_strength(payload.new_password)
+    if strength_error:
+        raise HTTPException(status_code=400, detail=strength_error)
+
+    crud.change_user_password(db, current_user.id, payload.new_password)
+    return {"success": True, "message": "Password changed successfully."}
 
 
 # ============== API Routes - Care Items ==============
