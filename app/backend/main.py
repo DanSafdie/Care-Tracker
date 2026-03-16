@@ -38,7 +38,7 @@ from schemas import (
 import crud
 from utils import get_care_day, to_local_time
 from seed_data import run_seed
-from sms_utils import send_sms
+from sms_utils import send_sms, mask_phone
 from hass_utils import call_hass_script
 from auth import (
     get_current_user, get_optional_user,
@@ -77,7 +77,7 @@ def send_user_alert_confirmation(user: User):
     expiry_text = f" until {user.alert_expiry_date}" if user.alert_expiry_date else ""
     message = f"🐶 Care-Tracker: Welcome to the pack, {user.name}! Your phone is now linked for pet care alerts. We'll keep you posted{expiry_text}!"
     
-    logger.info(f"Sending alert confirmation to {user.name} ({user.phone_number})")
+    logger.info(f"Sending alert confirmation to {user.name} ({mask_phone(user.phone_number)})")
     send_sms(user.phone_number, message)
 
 # Exception handling middleware for debugging and auth redirects

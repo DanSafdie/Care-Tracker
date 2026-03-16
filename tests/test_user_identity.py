@@ -31,11 +31,11 @@ class TestUserIdentity:
         assert "do not match" in response.text
 
     def test_signup_short_password(self, client):
-        """Signup should fail when password is too short."""
+        """Signup should fail when password is shorter than 8 chars (SEC-11)."""
         response = client.post("/signup", data={
             "name": "Short Pass",
-            "password": "ab",
-            "password_confirm": "ab",
+            "password": "abc1234",
+            "password_confirm": "abc1234",
         })
         assert response.status_code == 200
         assert "at least" in response.text

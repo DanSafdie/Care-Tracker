@@ -1,0 +1,8 @@
+# Dev-only overrides (auto-loaded by docker compose; excluded in production).
+# SEC-13: Source mount moved here so production containers use the baked-in image.
+version: '3.8'
+
+services:
+  care-tracker:
+    volumes:
+      - ./app:/app/app

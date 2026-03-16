@@ -65,11 +65,11 @@
             </div>
             <div class="form-group">
                 <label for="new-password">New Password</label>
-                <input type="password" id="new-password" required placeholder="Min 6 characters" autocomplete="new-password" minlength="6">
+                <input type="password" id="new-password" required placeholder="Min 8 characters" autocomplete="new-password" minlength="8">
             </div>
             <div class="form-group">
                 <label for="new-password-confirm">Confirm New Password</label>
-                <input type="password" id="new-password-confirm" required placeholder="Type new password again" autocomplete="new-password" minlength="6">
+                <input type="password" id="new-password-confirm" required placeholder="Type new password again" autocomplete="new-password" minlength="8">
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">Update Password</button>
@@ -252,8 +252,8 @@
                 return;
             }
 
-            if (newPassword.length < 6) {
-                passwordStatusMsg.textContent = "New password must be at least 6 characters.";
+            if (newPassword.length < 8) {
+                passwordStatusMsg.textContent = "New password must be at least 8 characters.";
                 passwordStatusMsg.className = "status-msg error";
                 return;
             }

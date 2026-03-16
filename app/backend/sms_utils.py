@@ -8,6 +8,14 @@ from dotenv import load_dotenv
 # Load environment variables from .env if present
 load_dotenv()
 
+
+def mask_phone(number: str) -> str:
+    """Mask a phone number for safe logging, e.g. +1***...7890"""
+    if not number or len(number) < 6:
+        return "***"
+    return f"{number[:2]}***{number[-4:]}"
+
+
 def send_sms(to_number: str, body: str) -> bool:
     """
     Sends an SMS message using Twilio.
@@ -42,6 +50,6 @@ def send_sms(to_number: str, body: str) -> bool:
         print(f"Initial Status: {message.status}")
         return True
     except Exception as e:
-        print(f"Failed to send SMS to {to_number}: {e}")
+        print(f"Failed to send SMS to {mask_phone(to_number)}: {e}")
         return False
 

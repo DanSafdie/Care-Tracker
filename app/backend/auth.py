@@ -34,8 +34,8 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30  # Household app – long-lived sessions are fine
 COOKIE_NAME = "care_tracker_session"
 
-# Minimum password length
-MIN_PASSWORD_LENGTH = 6
+# Minimum password length (SEC-11: raised from 6 for future health data)
+MIN_PASSWORD_LENGTH = 8
 
 # ---------------------------------------------------------------------------
 # Password hashing (bcrypt via passlib)
