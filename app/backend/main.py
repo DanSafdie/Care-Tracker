@@ -22,6 +22,9 @@ import os
 import traceback
 import logging
 from apscheduler.schedulers.background import BackgroundScheduler
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from database import get_db, init_db, SessionLocal
 from models import Pet, CareItem, TaskLog, User
@@ -57,6 +60,11 @@ app = FastAPI(
     redoc_url=None,
 )
 
+# SEC-07: Rate limiting (keyed by client IP)
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # ============== Helper Functions ==============
 
 def send_user_alert_confirmation(user: User):
@@ -91,6 +99,19 @@ async def catch_exceptions_middleware(request: Request, call_next):
                 content={"detail": "Internal server error"}
             )
         raise exc
+
+# SEC-09: Security headers on every response
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+    )
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # HSTS omitted until HTTPS is live (SEC-01)
+    return response
 
 # Mount static files (CSS, JS)
 static_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "static")
@@ -278,6 +299,7 @@ async def login_page(request: Request, error: str = None, success: str = None,
 
 
 @app.post("/login")
+@limiter.limit("5/minute")
 async def login_submit(request: Request, db: Session = Depends(get_db)):
     """Handle login form POST. Sets JWT cookie on success."""
     form = await request.form()
@@ -311,6 +333,7 @@ async def login_submit(request: Request, db: Session = Depends(get_db)):
 
 
 @app.post("/signup")
+@limiter.limit("5/minute")
 async def signup_submit(request: Request, db: Session = Depends(get_db)):
     """Handle signup form POST. Creates user, sets JWT cookie."""
     form = await request.form()
@@ -515,7 +538,8 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
 
 
 @app.post("/api/users/check-in", response_model=CheckInResponse)
-async def check_in_user(user: UserCreate, db: Session = Depends(get_db),
+@limiter.limit("3/minute")
+async def check_in_user(request: Request, user: UserCreate, db: Session = Depends(get_db),
                         current_user: User = Depends(get_current_user)):
     """Register or update a user's presence (legacy endpoint for task flows)."""
     db_user, is_new = crud.get_or_create_user(

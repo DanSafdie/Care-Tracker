@@ -1,6 +1,31 @@
 import pytest
 from datetime import date
 
+
+class TestSecurityHeaders:
+    def test_security_headers_present(self, client):
+        """SEC-09: Every response should include security headers."""
+        response = client.get("/api/info")
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+        assert response.headers["X-Frame-Options"] == "DENY"
+        assert "default-src 'self'" in response.headers["Content-Security-Policy"]
+        assert response.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+
+
+class TestPhoneValidation:
+    def test_invalid_phone_rejected(self, auth_client):
+        """SEC-06: Non-E.164 phone numbers should be rejected."""
+        client, user = auth_client
+        resp = client.put(f"/api/users/{user.id}", json={"phone_number": "555-1234"})
+        assert resp.status_code == 422
+
+    def test_valid_e164_accepted(self, auth_client):
+        """SEC-06: Valid E.164 phone numbers should be accepted."""
+        client, user = auth_client
+        resp = client.put(f"/api/users/{user.id}", json={"phone_number": "+12125551234"})
+        assert resp.status_code == 200
+
+
 class TestAPI:
     def test_info_endpoint_is_public(self, client):
         """GET /api/info should remain accessible without auth."""

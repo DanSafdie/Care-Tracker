@@ -2,9 +2,13 @@
 Pydantic schemas for API request/response validation.
 Separates API contract from database models for flexibility.
 """
-from pydantic import BaseModel
+import re
+from pydantic import BaseModel, field_validator
 from datetime import datetime, date
 from typing import Optional, List
+
+# E.164 international phone format: + followed by 1-15 digits
+_E164_RE = re.compile(r"^\+[1-9]\d{1,14}$")
 
 
 # ============== Pet Schemas ==============
@@ -39,6 +43,13 @@ class UserBase(BaseModel):
     wants_alerts: bool = False
     alert_expiry_date: Optional[date] = None
 
+    @field_validator("phone_number")
+    @classmethod
+    def validate_phone_e164(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not _E164_RE.match(v):
+            raise ValueError("Phone number must be in E.164 format (e.g. +12125551234)")
+        return v
+
 
 class UserCreate(UserBase):
     """Legacy check-in schema (kept for backward compat in task completion flows)."""
@@ -70,6 +81,13 @@ class UserUpdate(BaseModel):
     phone_number: Optional[str] = None
     wants_alerts: Optional[bool] = None
     alert_expiry_date: Optional[date] = None
+
+    @field_validator("phone_number")
+    @classmethod
+    def validate_phone_e164(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not _E164_RE.match(v):
+            raise ValueError("Phone number must be in E.164 format (e.g. +12125551234)")
+        return v
 
 
 class UserResponse(UserBase):
