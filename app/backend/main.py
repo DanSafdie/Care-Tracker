@@ -575,6 +575,12 @@ async def update_user(user_id: int, user_update: UserUpdate, db: Session = Depen
     if current_user.id != user_id:
         raise HTTPException(status_code=403, detail="You can only update your own profile")
 
+    # SEC-14: Reject name changes that collide with an existing user
+    if user_update.name is not None and user_update.name != current_user.name:
+        existing = crud.get_user_by_name(db, user_update.name)
+        if existing:
+            raise HTTPException(status_code=409, detail="That name is already taken")
+
     user = crud.update_user(db, user_id, user_update)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

@@ -3,7 +3,7 @@ Authentication utilities for Care-Tracker.
 
 Provides:
 - Bcrypt password hashing and verification via passlib
-- JWT token creation and decoding via python-jose
+- JWT token creation and decoding via PyJWT (SEC-15: replaced python-jose)
 - FastAPI dependency for extracting the current user from a JWT cookie
 - Password strength validation
 
@@ -18,7 +18,7 @@ from typing import Optional
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
-from jose import JWTError, jwt
+import jwt
 
 from database import get_db
 from models import User
@@ -87,7 +87,7 @@ def decode_access_token(token: str) -> Optional[dict]:
     """Decode and validate a JWT. Returns the payload dict or None."""
     try:
         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except JWTError:
+    except (jwt.InvalidTokenError, Exception):
         return None
 
 
