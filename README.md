@@ -19,6 +19,7 @@ A household pet care tracking system that helps multiple family members coordina
 - **Full history**: All actions logged with timestamps
 - **Intelligent Timers**: Coordinating medications like Denamarin with meal times (logic: 2hr wait after food if medication pending, 1hr wait after medication if meal pending)
 - **Mobile-friendly**: Responsive design works on phones and tablets
+- **Kiosk mode**: Dedicated dark-mode, touch-first dashboard (`/kiosk`) for always-on tablets (designed for Amazon Fire HD 10 w/ Fully Kiosk Browser)
 - **Extensible**: Easy to add new pets, care items, or responsibilities
 
 ## Current Configuration
@@ -79,8 +80,8 @@ The server binds to `0.0.0.0` by default, making it accessible from other device
 │   │   ├── crud.py       # Database operations
 │   │   └── ...
 │   └── frontend/         # Web UI
-│       ├── templates/    # HTML templates
-│       └── static/       # CSS and JavaScript
+│       ├── templates/    # HTML templates (index, kiosk, history, etc.)
+│       └── static/       # CSS and JavaScript (main + kiosk variants)
 ├── data/                 # SQLite database
 ├── tests/                # Pytest test suite
 ├── requirements.txt      # Python dependencies
@@ -93,6 +94,7 @@ The server binds to `0.0.0.0` by default, making it accessible from other device
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/` | GET | Dashboard (web UI) |
+| `/kiosk` | GET | Kiosk dashboard — dark, touch-first, always-on tablet UI |
 | `/history` | GET | History page (web UI) |
 | `/api/pets` | GET | List all pets |
 | `/api/care-items` | GET | List care items |

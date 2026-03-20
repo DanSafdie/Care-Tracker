@@ -44,14 +44,17 @@ A household pet care tracking system that enables multiple family members to coo
     │       │   ├── base.html    # Base template with nav/footer (auth-aware)
     │       │   ├── login.html   # Login / signup page with password confirmation
     │       │   ├── index.html   # Dashboard (today's tasks)
+    │       │   ├── kiosk.html   # Kiosk dashboard (standalone, no base template)
     │       │   ├── account.html # Account settings + change password
     │       │   └── history.html # History log view
 │       │
 │       └── static/
 │           ├── css/
-│           │   └── style.css
+│           │   ├── style.css       # Main UI styles
+│           │   └── kiosk.css       # Kiosk dashboard styles (dark, touch-first)
 │           └── js/
-│               └── app.js
+│               ├── app.js          # Main UI logic
+│               └── kiosk.js        # Kiosk dashboard (SPA, API-driven rendering)
 │
 ├── data/                     # SQLite database storage
 ├── tests/                    # Test suite
@@ -141,6 +144,9 @@ Historical record of task completions and undos.
 
 ### History
 - `GET /api/history` - Get task history with optional filters
+
+### Kiosk
+- `GET /kiosk` - Kiosk dashboard (see [Kiosk Mode](#kiosk-mode-always-on-tablet-dashboard) below)
 
 ### Authentication
 - `GET /login` - Login / signup page
@@ -249,6 +255,78 @@ Example:
 - At 11:30 PM on Jan 1st → care day is Jan 1st
 - At 2:00 AM on Jan 2nd → care day is still Jan 1st
 - At 4:00 AM on Jan 2nd → care day becomes Jan 2nd
+
+## Kiosk Mode (Always-On Tablet Dashboard)
+
+A dedicated fullscreen UI at `/kiosk` designed for an always-on wall-mounted or stand-mounted tablet. Currently deployed on an **Amazon Fire HD 10 (13th Gen, 2023)** running **Fully Kiosk Browser** on Fire OS 8.
+
+### Target Device
+
+| Spec | Value |
+|------|-------|
+| Physical resolution | 1920 × 1200 (landscape) |
+| CSS viewport | ~1280 × 800 (device pixel ratio ~1.5) |
+| Panel | 10.1" IPS LCD, 224 PPI |
+| Browser | Fully Kiosk Browser (Android WebView, ~Chrome 90) |
+| Input | Touch only — no hover states |
+
+### Design Principles
+
+- **Dark mode only** — reduces eye strain for a 24/7 display and saves power on LCD
+- **Glanceable from a distance** — 18px base font, 22px task names, 24-26px clock/timers
+- **Touch-first** — minimum 48px tap targets; all task cards are full-surface tap targets
+- **Single-device** — no responsive breakpoints below 800px; one fixed layout
+- **Lightweight rendering** — no heavy animations or CSS transitions; respects MediaTek chip limitations
+- **WebView-compatible** — `-webkit-` prefixed CSS for older WebView; ES5-style JS (no arrow functions, no `let`/`const`, no template literals)
+
+### Architecture
+
+Unlike the main UI (server-rendered Jinja2 templates with page reloads), the kiosk is a **client-side SPA**:
+
+1. `kiosk.html` — Standalone shell template (does not extend `base.html`); injects JWT user identity
+2. `kiosk.js` — Fetches `/api/status` every 30 seconds and re-renders the DOM client-side
+3. `kiosk.css` — Self-contained dark stylesheet with no dependency on `style.css`
+
+This approach avoids full-page reloads on the always-on display, giving smoother visual updates and eliminating white-flash on refresh.
+
+### Features
+
+- **Auto-refresh** — Polls `/api/status` every 30 seconds; re-renders grid without page reload
+- **Live clock** — Updates every second in the header
+- **Timer banner** — Shows active pet timers with live countdown; mirrors the main UI's timer prompt logic (meal/Denamarin coordination) using touch-friendly modals instead of `confirm()` dialogs
+- **Progress bar** — Bottom bar showing completion progress (e.g., "3 of 7 Complete")
+- **Offline resilience** — On network failure, keeps showing last-known state with a red "Connection lost" banner and pulsing red status dot; resumes automatically when connectivity returns
+- **Toast notifications** — Brief success/error feedback for task actions
+- **No localStorage dependency** — All state is fetched from the server; Fully Kiosk can clear WebView data without losing anything
+
+### Setup
+
+1. Log in to the main UI from the kiosk device to establish a JWT session cookie
+2. Navigate to `http://<host>:8273/kiosk`
+3. Set this URL as the Fully Kiosk start page
+4. In Fully Kiosk settings, keep "Clear WebView Data" disabled so the 30-day JWT cookie persists
+
+### Layout (1280 × 800 landscape)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 🐾 PET NAME                    Date      Time          🟢  │  Header (56px)
+├─────────────────────────────────────────────────────────────┤
+│ ⏱️  Timer Label  HH:MM:SS  ✕                               │  Timer banner (52px, when active)
+├────────────┬────────────┬────────────┬──────────────────────┤
+│            │            │            │                      │
+│  Task 1    │  Task 2    │  Task 3    │  Task 4              │  Card grid
+│   ✓ Done   │   ✓ Done   │   ○ Pend   │   ○ Pend             │  (fills remaining space)
+│  time·who  │  time·who  │  Tap to…   │  Tap to…             │
+│            │            │            │                      │
+├────────────┼────────────┼────────────┼──────────────────────┤
+│  Task 5    │  Task 6    │  Task 7    │                      │
+│   ○ Pend   │   ○ Pend   │   ○ Pend   │                      │
+│  Tap to…   │  Tap to…   │  Tap to…   │                      │
+├────────────┴────────────┴────────────┴──────────────────────┤
+│ [══════════>                        ]  2 of 7 Complete      │  Progress bar (40px)
+└─────────────────────────────────────────────────────────────┘
+```
 
 ## Future Extensions
 
