@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- Fire HD 10: CSS viewport ~1280x800 landscape; lock zoom for kiosk -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Care-Tracker Kiosk</title>
+    <link rel="stylesheet" href="/static/css/kiosk.css?v={{ now.timestamp() }}">
+</head>
+<body>
+
+    <!-- Header: pet name, date, clock, connection status -->
+    <header class="kiosk-header">
+        <div class="kiosk-pet-info">
+            <span class="kiosk-pet-icon">🐾</span>
+            <span class="kiosk-pet-name" id="kiosk-pet-name">Loading…</span>
+        </div>
+        <div class="kiosk-meta">
+            <span class="kiosk-date" id="kiosk-date"></span>
+            <span class="kiosk-clock" id="kiosk-clock"></span>
+            <span class="kiosk-status-dot" id="kiosk-status"></span>
+        </div>
+    </header>
+
+    <!-- Timer banner (hidden when no timer active) -->
+    <div class="kiosk-timer-banner" id="kiosk-timer"></div>
+
+    <!-- Task card grid -->
+    <div class="kiosk-grid-wrap">
+        <div class="kiosk-grid" id="kiosk-grid">
+            <div class="kiosk-loading">Loading tasks…</div>
+        </div>
+    </div>
+
+    <!-- Progress bar -->
+    <footer class="kiosk-progress" id="kiosk-progress">
+        <div class="kiosk-progress-bar">
+            <div class="kiosk-progress-fill" id="progress-fill" style="width:0%"></div>
+        </div>
+        <span class="kiosk-progress-text" id="progress-text">0 of 0 Complete</span>
+    </footer>
+
+    <!-- Confirmation modal -->
+    <div class="kiosk-modal" id="kiosk-modal" style="display:none">
+        <div class="kiosk-modal-content">
+            <h3 id="modal-title"></h3>
+            <p id="modal-message"></p>
+            <div class="kiosk-modal-buttons">
+                <button class="kiosk-btn kiosk-btn-cancel" id="modal-cancel">Cancel</button>
+                <button class="kiosk-btn kiosk-btn-confirm" id="modal-confirm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Offline warning -->
+    <div class="kiosk-offline-banner" id="offline-banner">
+        Connection lost — showing last known state
+    </div>
+
+    <!-- Toast for brief feedback -->
+    <div class="kiosk-toast" id="kiosk-toast"></div>
+
+    <!-- Inject authenticated user for task attribution -->
+    <script>
+        window.CURRENT_USER_NAME = {{ (current_user.name | tojson) if current_user else 'null' }};
+    </script>
+    <script src="/static/js/kiosk.js?v={{ now.timestamp() }}"></script>
+</body>
+</html>

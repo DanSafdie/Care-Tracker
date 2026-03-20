@@ -1,0 +1,611 @@
+/*
+ * Care-Tracker Kiosk Dashboard
+ * Optimized for Amazon Fire HD 10 (1280x800 CSS viewport, landscape)
+ * Dark mode, touch-first, glanceable from several feet away.
+ *
+ * Target: Fully Kiosk Browser (WebView ~Chrome 90), Fire OS 8
+ * No hover states, 48px+ touch targets, high contrast on IPS LCD.
+ */
+
+/* ============== Reset & Variables ============== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+:root {
+    /* Dark palette — high contrast for dimmed IPS panel */
+    --k-bg: #0d1117;
+    --k-surface: #161b22;
+    --k-surface-hover: #1c2333;
+    --k-border: #30363d;
+    --k-text: #e6edf3;
+    --k-text-muted: #8b949e;
+    --k-text-dim: #484f58;
+
+    --k-accent: #58a6ff;
+    --k-success: #3fb950;
+    --k-success-subtle: rgba(63, 185, 80, 0.12);
+    --k-warning: #d29922;
+    --k-danger: #f85149;
+
+    /* Category accent colors */
+    --k-cat-medication: #f85149;
+    --k-cat-supplement: #a371f7;
+    --k-cat-food: #3fb950;
+    --k-cat-other: #8b949e;
+
+    --k-radius: 16px;
+    --k-radius-sm: 8px;
+}
+
+/* ============== Layout Shell ============== */
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--k-bg);
+    color: var(--k-text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    font-size: 18px;
+    line-height: 1.4;
+}
+
+body {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+}
+
+/* ============== Header ============== */
+
+.kiosk-header {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-justify-content: space-between;
+    justify-content: space-between;
+    -webkit-align-items: center;
+    align-items: center;
+    padding: 0 24px;
+    height: 56px;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+    background: var(--k-surface);
+    border-bottom: 1px solid var(--k-border);
+}
+
+.kiosk-pet-info {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.kiosk-pet-icon {
+    font-size: 24px;
+}
+
+.kiosk-pet-name {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.kiosk-meta {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: center;
+    align-items: center;
+    gap: 20px;
+}
+
+.kiosk-date {
+    font-size: 18px;
+    color: var(--k-text-muted);
+}
+
+.kiosk-clock {
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--k-text);
+    min-width: 100px;
+    text-align: right;
+}
+
+.kiosk-status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--k-success);
+    box-shadow: 0 0 8px var(--k-success);
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+}
+
+.kiosk-status-dot.disconnected {
+    background: var(--k-danger);
+    box-shadow: 0 0 8px var(--k-danger);
+    -webkit-animation: pulse-disconnect 2s ease-in-out infinite;
+    animation: pulse-disconnect 2s ease-in-out infinite;
+}
+
+@-webkit-keyframes pulse-disconnect {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+@keyframes pulse-disconnect {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* ============== Timer Banner ============== */
+
+.kiosk-timer-banner {
+    display: none;
+    -webkit-align-items: center;
+    align-items: center;
+    -webkit-justify-content: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 0 24px;
+    height: 52px;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #131d33 0%, #141422 100%);
+    border-bottom: 1px solid var(--k-border);
+}
+
+.kiosk-timer-banner.active {
+    display: -webkit-flex;
+    display: flex;
+}
+
+.timer-item {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.timer-item.ready {
+    color: var(--k-success);
+}
+
+.timer-icon {
+    font-size: 22px;
+}
+
+.timer-label {
+    font-size: 18px;
+    color: var(--k-text-muted);
+}
+
+.timer-item.ready .timer-label {
+    color: var(--k-success);
+}
+
+.timer-countdown {
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--k-accent);
+    letter-spacing: 0.5px;
+}
+
+.timer-item.ready .timer-countdown {
+    color: var(--k-success);
+}
+
+.timer-clear-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--k-text-muted);
+    font-size: 16px;
+    cursor: pointer;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: center;
+    align-items: center;
+    -webkit-justify-content: center;
+    justify-content: center;
+    margin-left: 4px;
+}
+
+.timer-clear-btn:active {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* ============== Task Grid ============== */
+
+.kiosk-grid-wrap {
+    -webkit-flex: 1;
+    flex: 1;
+    overflow: hidden;
+    padding: 16px 24px;
+}
+
+.kiosk-grid {
+    display: -ms-grid;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-auto-rows: 1fr;
+    gap: 16px;
+    height: 100%;
+}
+
+/* ============== Task Card ============== */
+
+.kiosk-card {
+    background: var(--k-surface);
+    border: 2px solid var(--k-border);
+    border-radius: var(--k-radius);
+    padding: 16px 16px 12px;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    -webkit-transition: transform 0.1s ease, background-color 0.2s ease, border-color 0.2s ease;
+    transition: transform 0.1s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.kiosk-card:active {
+    -webkit-transform: scale(0.96);
+    transform: scale(0.96);
+    background: var(--k-surface-hover);
+}
+
+.kiosk-card.completed {
+    background: var(--k-success-subtle);
+    border-color: rgba(63, 185, 80, 0.4);
+}
+
+/* Visual feedback while API call is in flight */
+.kiosk-card.tapped {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Category color stripe across top edge */
+.kiosk-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--k-cat-other);
+}
+.kiosk-card[data-cat="medication"]::before { background: var(--k-cat-medication); }
+.kiosk-card[data-cat="supplement"]::before { background: var(--k-cat-supplement); }
+.kiosk-card[data-cat="food"]::before       { background: var(--k-cat-food); }
+.kiosk-card[data-cat="other"]::before      { background: var(--k-cat-other); }
+
+/* Card header: task name + category badge */
+.kiosk-card-header {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-justify-content: space-between;
+    justify-content: space-between;
+    -webkit-align-items: flex-start;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.kiosk-card-name {
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.kiosk-pill-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--k-danger);
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.kiosk-cat-badge {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: white;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+    margin-top: 3px;
+}
+
+.kiosk-cat-badge.medication { background: var(--k-cat-medication); }
+.kiosk-cat-badge.supplement { background: var(--k-cat-supplement); }
+.kiosk-cat-badge.food       { background: var(--k-cat-food); }
+.kiosk-cat-badge.other      { background: var(--k-cat-other); }
+
+/* Pet name label — only shown when multiple pets exist */
+.kiosk-card-pet {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--k-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+
+/* Card body: large status icon centered */
+.kiosk-card-body {
+    -webkit-flex: 1;
+    flex: 1;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: center;
+    align-items: center;
+    -webkit-justify-content: center;
+    justify-content: center;
+}
+
+.kiosk-status-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: center;
+    align-items: center;
+    -webkit-justify-content: center;
+    justify-content: center;
+}
+
+.kiosk-status-icon.done {
+    background: var(--k-success);
+    color: white;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.kiosk-status-icon.pending {
+    border: 3px solid var(--k-text-dim);
+}
+
+/* Card footer: completion info or hint */
+.kiosk-card-footer {
+    text-align: center;
+    font-size: 14px;
+    color: var(--k-text-muted);
+    min-height: 20px;
+}
+
+.kiosk-card.completed .kiosk-card-footer {
+    color: rgba(63, 185, 80, 0.8);
+}
+
+/* ============== Progress Bar ============== */
+
+.kiosk-progress {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: center;
+    align-items: center;
+    -webkit-justify-content: center;
+    justify-content: center;
+    gap: 16px;
+    height: 40px;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+    background: var(--k-surface);
+    border-top: 1px solid var(--k-border);
+    padding: 0 24px;
+}
+
+.kiosk-progress-bar {
+    -webkit-flex: 1;
+    flex: 1;
+    max-width: 600px;
+    height: 8px;
+    background: var(--k-border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.kiosk-progress-fill {
+    height: 100%;
+    background: var(--k-success);
+    border-radius: 4px;
+    -webkit-transition: width 0.5s ease;
+    transition: width 0.5s ease;
+}
+
+.kiosk-progress-text {
+    font-size: 16px;
+    color: var(--k-text-muted);
+    white-space: nowrap;
+    min-width: 130px;
+    text-align: right;
+}
+
+.kiosk-progress.all-done .kiosk-progress-text {
+    color: var(--k-success);
+}
+
+/* ============== Modal (confirmation dialogs) ============== */
+
+.kiosk-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: center;
+    align-items: center;
+    -webkit-justify-content: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.kiosk-modal-content {
+    background: var(--k-surface);
+    border: 1px solid var(--k-border);
+    border-radius: var(--k-radius);
+    padding: 32px;
+    max-width: 480px;
+    width: 90%;
+    text-align: center;
+}
+
+.kiosk-modal-content h3 {
+    font-size: 24px;
+    margin-bottom: 12px;
+}
+
+.kiosk-modal-content p {
+    font-size: 18px;
+    color: var(--k-text-muted);
+    margin-bottom: 28px;
+    line-height: 1.5;
+}
+
+.kiosk-modal-buttons {
+    display: -webkit-flex;
+    display: flex;
+    gap: 16px;
+}
+
+.kiosk-btn {
+    -webkit-flex: 1;
+    flex: 1;
+    padding: 16px;
+    font-size: 18px;
+    font-weight: 600;
+    border: none;
+    border-radius: var(--k-radius-sm);
+    cursor: pointer;
+    min-height: 56px;
+}
+
+.kiosk-btn:active {
+    -webkit-transform: scale(0.97);
+    transform: scale(0.97);
+}
+
+.kiosk-btn-confirm {
+    background: var(--k-accent);
+    color: white;
+}
+
+.kiosk-btn-cancel {
+    background: var(--k-border);
+    color: var(--k-text-muted);
+}
+
+.kiosk-btn-danger {
+    background: var(--k-danger);
+    color: white;
+}
+
+/* ============== Offline Banner ============== */
+
+.kiosk-offline-banner {
+    position: fixed;
+    bottom: 40px;
+    left: 0;
+    right: 0;
+    padding: 10px;
+    background: rgba(248, 81, 73, 0.92);
+    color: white;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 600;
+    z-index: 500;
+    display: none;
+}
+
+.kiosk-offline-banner.visible {
+    display: block;
+}
+
+/* ============== Toast (brief feedback) ============== */
+
+.kiosk-toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    -webkit-transform: translateX(-50%);
+    transform: translateX(-50%);
+    padding: 12px 28px;
+    border-radius: var(--k-radius-sm);
+    font-size: 16px;
+    font-weight: 600;
+    z-index: 2000;
+    opacity: 0;
+    -webkit-transition: opacity 0.3s ease;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.kiosk-toast.visible {
+    opacity: 1;
+}
+
+.kiosk-toast.error {
+    background: var(--k-danger);
+    color: white;
+}
+
+.kiosk-toast.success {
+    background: var(--k-success);
+    color: white;
+}
+
+/* ============== Empty / Loading States ============== */
+
+.kiosk-empty {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: center;
+    align-items: center;
+    -webkit-justify-content: center;
+    justify-content: center;
+    height: 100%;
+    font-size: 22px;
+    color: var(--k-text-dim);
+}
+
+.kiosk-loading {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: center;
+    align-items: center;
+    -webkit-justify-content: center;
+    justify-content: center;
+    height: 100%;
+    font-size: 20px;
+    color: var(--k-text-dim);
+}
+
+/* ============== "All Done" celebration ============== */
+
+.kiosk-card.completed .kiosk-status-icon.done {
+    box-shadow: 0 0 12px rgba(63, 185, 80, 0.3);
+}

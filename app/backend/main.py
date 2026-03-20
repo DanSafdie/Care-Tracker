@@ -447,6 +447,19 @@ async def history_page(
         })
 
 
+@app.get("/kiosk", response_class=HTMLResponse)
+async def kiosk_page(request: Request,
+                     current_user: User = Depends(get_current_user)):
+    """Kiosk mode — fullscreen always-on dashboard for a wall-mounted tablet."""
+    care_day = get_care_day()
+    return templates.TemplateResponse("kiosk.html", {
+        "request": request,
+        "care_day": care_day,
+        "now": to_local_time(datetime.utcnow()),
+        "current_user": current_user,
+    })
+
+
 @app.get("/account", response_class=HTMLResponse)
 async def account_page(request: Request,
                        current_user: User = Depends(get_current_user)):
