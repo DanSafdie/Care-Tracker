@@ -64,6 +64,7 @@
     <script>
         window.CURRENT_USER_NAME = {{ (current_user.name | tojson) if current_user else 'null' }};
     </script>
+    <script src="/static/js/confetti.js?v={{ now.timestamp() }}"></script>
     <script src="/static/js/kiosk.js?v={{ now.timestamp() }}"></script>
 </body>
 </html>

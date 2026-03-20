@@ -393,6 +393,35 @@ function setupAutoRefresh() {
     }, 60000);
 }
 
+// ============== All-Tasks-Done Confetti ==============
+
+/**
+ * Check if every Chessie task on the dashboard is completed.
+ * Uses sessionStorage keyed to the care day so confetti only fires
+ * once per completion cycle (clears if a task is undone).
+ */
+function checkAllTasksDone() {
+    if (window.location.pathname !== '/') return;
+
+    const cards = document.querySelectorAll('.task-card');
+    if (cards.length === 0) return;
+
+    const allDone = Array.from(cards).every(c => c.classList.contains('completed'));
+    const storageKey = 'confetti-shown-' + (typeof careDay !== 'undefined' ? careDay : 'unknown');
+
+    if (allDone) {
+        if (!sessionStorage.getItem(storageKey)) {
+            sessionStorage.setItem(storageKey, '1');
+            if (typeof launchConfetti === 'function') {
+                launchConfetti();
+            }
+        }
+    } else {
+        // Reset so confetti fires again if user undoes then re-completes all
+        sessionStorage.removeItem(storageKey);
+    }
+}
+
 // ============== Initialization ==============
 
 window.addEventListener('load', () => {
@@ -400,4 +429,5 @@ window.addEventListener('load', () => {
     updateUserDisplay();
     checkTimers();
     setupAutoRefresh();
+    checkAllTasksDone();
 });

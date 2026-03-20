@@ -18,12 +18,13 @@ const DENA_ITEM = 'Denamarin';
 
 // ============== State ==============
 
-let lastData = null;       // Most recent API response
-let isOffline = false;
-let tickInterval = null;   // 1-second clock + timer tick
-let refreshInterval = null;
-let modalResolver = null;  // Promise resolve for current modal
-let toastTimeout = null;
+var lastData = null;       // Most recent API response
+var isOffline = false;
+var tickInterval = null;   // 1-second clock + timer tick
+var refreshInterval = null;
+var modalResolver = null;  // Promise resolve for current modal
+var toastTimeout = null;
+var wasAllDone = false;    // Tracks previous all-done state for confetti trigger
 
 // ============== Initialization ==============
 
@@ -211,6 +212,7 @@ function renderProgress(allTasks) {
     var total = allTasks.length;
     var completed = allTasks.filter(function (t) { return t.task.is_completed; }).length;
     var pct = total > 0 ? (completed / total * 100) : 0;
+    var allDoneNow = completed === total && total > 0;
 
     var fill = document.getElementById('progress-fill');
     var text = document.getElementById('progress-text');
@@ -219,12 +221,20 @@ function renderProgress(allTasks) {
     if (fill) fill.style.width = pct + '%';
     if (text) text.textContent = completed + ' of ' + total + ' Complete';
     if (bar) {
-        if (completed === total && total > 0) {
+        if (allDoneNow) {
             bar.classList.add('all-done');
         } else {
             bar.classList.remove('all-done');
         }
     }
+
+    // Fire confetti on transition to all-done (not on every refresh)
+    if (allDoneNow && !wasAllDone) {
+        if (typeof launchConfetti === 'function') {
+            launchConfetti();
+        }
+    }
+    wasAllDone = allDoneNow;
 }
 
 // ============== Timer Countdowns (updated every second) ==============

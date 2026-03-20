@@ -36,6 +36,7 @@
         window.CURRENT_USER_NAME = {{ (current_user.name | tojson) if current_user else 'null' }};
         window.CURRENT_USER_ID = {{ (current_user.id | tojson) if current_user else 'null' }};
     </script>
+    <script src="/static/js/confetti.js?v={{ now.timestamp() }}"></script>
     <script src="/static/js/app.js?v={{ now.timestamp() }}"></script>
     {% block scripts %}{% endblock %}
 </body>
