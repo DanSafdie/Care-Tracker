@@ -6,8 +6,19 @@ A household pet care tracking system that helps multiple family members coordina
 
 ### Development & Deployment
 - **Development**: Typically developed on macOS (MacBook Pro).
-- **Production/Runtime**: Designed to run on a **Windows** via **Docker**.
+- **Production/Runtime**: Runs on **Windows** via **Docker** (specifically, a Docker Compose setup).
 - **Cross-Platform**: The system is built to be fully compatible with both environments.
+
+### Identifying the Production Environment & Applying Changes
+If you are an AI agent working in this repository and the workspace path is `C:\Users\danie\Documents\Docker\Care-Tracker` (or similar Windows path with Docker in the name), **you are in the production environment**.
+
+**CRITICAL RULES FOR PRODUCTION:**
+1. **Docker Compose Overrides:** The `docker-compose.override.yml` file mounts the local `./app` directory into the container. This means changes to Python files (`.py`), HTML templates (`.html`), and static assets (`.js`, `.css`) will take effect *immediately* without a container restart (thanks to FastAPI's `--reload` flag and live volume mounts).
+2. **Applying Changes:** 
+   - For code/frontend changes: Just save the files. The live volume mount handles it.
+   - For `requirements.txt` / dependency changes: You MUST rebuild the container using `docker compose up -d --build`.
+   - For `Dockerfile` or `docker-compose.yml` changes: You MUST rebuild/restart the container using `docker compose up -d --build`.
+3. **No Downtime:** Avoid running `docker compose down` unless absolutely necessary, as it causes downtime. Use `docker compose up -d --build` to seamlessly recreate the container.
 
 ## Features
 

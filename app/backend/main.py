@@ -44,7 +44,7 @@ from auth import (
     get_current_user, get_optional_user,
     create_access_token, verify_password,
     validate_password_strength, hash_password,
-    COOKIE_NAME,
+    COOKIE_NAME, SECURE_COOKIES,
 )
 
 # Configure logging
@@ -333,7 +333,7 @@ async def login_submit(request: Request, db: Session = Depends(get_db)):
     response.set_cookie(
         key=COOKIE_NAME, value=token,
         httponly=True, samesite="lax", max_age=60 * 60 * 24 * 30,
-        secure=True,  # SEC-08: only send cookie over HTTPS
+        secure=SECURE_COOKIES,  # SEC-08: True in production (HTTPS/Caddy); False for HTTP dev
     )
     return response
 
@@ -377,7 +377,7 @@ async def signup_submit(request: Request, db: Session = Depends(get_db)):
     response.set_cookie(
         key=COOKIE_NAME, value=token,
         httponly=True, samesite="lax", max_age=60 * 60 * 24 * 30,
-        secure=True,  # SEC-08: only send cookie over HTTPS
+        secure=SECURE_COOKIES,  # SEC-08: True in production (HTTPS/Caddy); False for HTTP dev
     )
     return response
 

@@ -13,6 +13,12 @@ services:
       - DATA_DIR=/data
       - TZ=America/New_York
       - ROOT_PATH=/care
+      # AUTH_SECRET_KEY must be set in .env for sessions to survive container restarts.
+      # Generate one with: python -c "import secrets; print(secrets.token_urlsafe(64))"
+      - AUTH_SECRET_KEY=${AUTH_SECRET_KEY}
+      # Secure cookies are only sent by browsers over HTTPS.
+      # All access goes through Caddy (HTTPS), including the kiosk tablet.
+      - SECURE_COOKIES=true
     restart: unless-stopped
     networks:
       - default

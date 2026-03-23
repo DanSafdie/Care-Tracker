@@ -476,11 +476,17 @@ function setOffline() {
 
 // ============== Utilities ==============
 
-/** Parse an API datetime string, treating naive datetimes as UTC */
+/** Parse an API datetime string. Backend returns naive datetimes in local time. */
 function parseApiTime(isoString) {
     if (!isoString) return null;
     var hasTimezone = /Z|[+-]\d{2}:\d{2}$/.test(isoString);
-    if (!hasTimezone) isoString += 'Z';
+    if (!hasTimezone) {
+        // Backend returns local time. To ensure cross-browser compatibility 
+        // (especially on older tablet browsers), convert "YYYY-MM-DDTHH:mm:ss" 
+        // to "YYYY/MM/DD HH:mm:ss" which is universally parsed as local time.
+        var localString = isoString.split('.')[0].replace('T', ' ').replace(/-/g, '/');
+        return new Date(localString);
+    }
     return new Date(isoString);
 }
 

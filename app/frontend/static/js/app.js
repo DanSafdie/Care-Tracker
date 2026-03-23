@@ -278,7 +278,12 @@ function initTimerDisplay(petId, label, endTimeStr) {
     
     if (!timerEl || !labelEl || !displayEl || !endTimeStr) return;
     
-    const endTime = new Date(endTimeStr).getTime();
+    // Safely parse local naive datetime string across all browsers
+    let safeTimeStr = endTimeStr;
+    if (!/Z|[+-]\d{2}:\d{2}$/.test(endTimeStr)) {
+        safeTimeStr = endTimeStr.split('.')[0].replace('T', ' ').replace(/-/g, '/');
+    }
+    const endTime = new Date(safeTimeStr).getTime();
     
     labelEl.textContent = label;
     timerEl.style.display = 'block';

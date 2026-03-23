@@ -28,11 +28,17 @@ from models import User
 # ---------------------------------------------------------------------------
 
 # Generate a random key if none is provided (fine for single-instance deploys;
-# set AUTH_SECRET_KEY in .env for persistence across restarts)
-SECRET_KEY = os.environ.get("AUTH_SECRET_KEY", secrets.token_urlsafe(64))
+# set AUTH_SECRET_KEY in .env file for sessions to survive container restarts).
+# Use `or` instead of dict-default so an empty string also triggers the fallback.
+SECRET_KEY = os.environ.get("AUTH_SECRET_KEY") or secrets.token_urlsafe(64)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30  # Household app – long-lived sessions are fine
 COOKIE_NAME = "care_tracker_session"
+
+# SECURE_COOKIES=true  → cookies are Secure-flagged (required for HTTPS/Caddy production)
+# SECURE_COOKIES=false → cookies work over plain HTTP (dev or direct-port access)
+# Default True so production is safe; override to false in docker-compose.override.yml for dev
+SECURE_COOKIES = os.environ.get("SECURE_COOKIES", "true").lower() == "true"
 
 # Minimum password length (SEC-11: raised from 6 for future health data)
 MIN_PASSWORD_LENGTH = 8
