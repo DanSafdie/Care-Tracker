@@ -91,13 +91,13 @@ These become important with the meds expansion — health data raises the stakes
 - **Files:** `app/backend/main.py`, `requirements.txt`.
 
 ### SEC-08: Add `secure` flag to session cookies
-- **Status:** UNBLOCKED — SEC-01 is complete, HTTPS is live. Ready to implement.
-- **Risk:** Without `secure=True`, the JWT cookie is sent over HTTP and can be intercepted.
+- **Status:** ✅ COMPLETE (2026-03-22)
+- **Resolution:** Added `secure=True` to both `set_cookie()` calls in `app/backend/main.py`
+  (login and signup routes). Cookie will now only be transmitted over HTTPS. All 44 tests pass.
+- **Risk was:** Without `secure=True`, the JWT cookie is sent over HTTP and can be intercepted.
   Now that port 8273 is closed on the router, the only remaining vector is if a user
   manually navigates to `http://` (Caddy redirects to HTTPS, but the first request
   could leak the cookie).
-- **Scope:** Two `set_cookie()` calls in `app/backend/main.py` (login and signup).
-- **Change:** Add `secure=True` to both.
 - **Files:** `app/backend/main.py`.
 
 ### SEC-09: Add security headers middleware

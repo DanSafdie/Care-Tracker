@@ -333,6 +333,7 @@ async def login_submit(request: Request, db: Session = Depends(get_db)):
     response.set_cookie(
         key=COOKIE_NAME, value=token,
         httponly=True, samesite="lax", max_age=60 * 60 * 24 * 30,
+        secure=True,  # SEC-08: only send cookie over HTTPS
     )
     return response
 
@@ -376,6 +377,7 @@ async def signup_submit(request: Request, db: Session = Depends(get_db)):
     response.set_cookie(
         key=COOKIE_NAME, value=token,
         httponly=True, samesite="lax", max_age=60 * 60 * 24 * 30,
+        secure=True,  # SEC-08: only send cookie over HTTPS
     )
     return response
 
