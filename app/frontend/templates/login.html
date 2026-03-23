@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Care-Tracker</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=auth">
+    <link rel="stylesheet" href="{{ request.scope['root_path'] }}/static/css/style.css?v=auth">
 </head>
 <body>
     <header>
@@ -29,7 +29,7 @@
             {% endif %}
 
             <!-- Login Form -->
-            <form id="form-login" class="auth-form" method="POST" action="/login">
+            <form id="form-login" class="auth-form" method="POST" action="{{ request.scope['root_path'] }}/login">
                 <div class="form-group">
                     <label for="login-name">Name</label>
                     <input type="text" id="login-name" name="name" required placeholder="First & Last Name" autocomplete="username">
@@ -42,7 +42,7 @@
             </form>
 
             <!-- Signup Form -->
-            <form id="form-signup" class="auth-form" method="POST" action="/signup" style="display: none;">
+            <form id="form-signup" class="auth-form" method="POST" action="{{ request.scope['root_path'] }}/signup" style="display: none;">
                 <div class="form-group">
                     <label for="signup-name">Name</label>
                     <input type="text" id="signup-name" name="name" required placeholder="First & Last Name" autocomplete="username">

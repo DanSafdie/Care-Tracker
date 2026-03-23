@@ -51,6 +51,10 @@ from auth import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Subpath prefix for reverse proxy routing (e.g., "/care" behind Caddy).
+# Empty string = direct access (no proxy). Set via ROOT_PATH env var in docker-compose.
+ROOT_PATH = os.environ.get("ROOT_PATH", "")
+
 # Create FastAPI app (SEC-04: docs disabled to avoid exposing endpoint map publicly)
 app = FastAPI(
     title="Care-Tracker",
@@ -58,6 +62,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url=None,
     redoc_url=None,
+    root_path=ROOT_PATH,
 )
 
 # SEC-07: Rate limiting (keyed by client IP)
@@ -87,7 +92,7 @@ async def catch_exceptions_middleware(request: Request, call_next):
         response = await call_next(request)
         # For non-API 401s, redirect to login page instead of showing raw error
         if response.status_code == 401 and not request.url.path.startswith("/api/"):
-            return RedirectResponse(url="/login", status_code=302)
+            return RedirectResponse(url=request.scope.get("root_path", "") + "/login", status_code=302)
         return response
     except Exception as exc:
         print(f"!!! EXCEPTION CAUGHT BY MIDDLEWARE !!!")
@@ -287,7 +292,7 @@ async def login_page(request: Request, error: str = None, success: str = None,
                      user: User = Depends(get_optional_user)):
     """Render the login / signup page. Redirect to dashboard if already logged in."""
     if user:
-        return RedirectResponse(url="/", status_code=302)
+        return RedirectResponse(url=request.scope.get("root_path", "") + "/", status_code=302)
     care_day = get_care_day()
     return templates.TemplateResponse("login.html", {
         "request": request,
@@ -324,7 +329,7 @@ async def login_submit(request: Request, db: Session = Depends(get_db)):
         })
 
     token = create_access_token(user.id, user.name)
-    response = RedirectResponse(url="/", status_code=302)
+    response = RedirectResponse(url=request.scope.get("root_path", "") + "/", status_code=302)
     response.set_cookie(
         key=COOKIE_NAME, value=token,
         httponly=True, samesite="lax", max_age=60 * 60 * 24 * 30,
@@ -367,7 +372,7 @@ async def signup_submit(request: Request, db: Session = Depends(get_db)):
 
     user = crud.create_user_with_password(db, name, password)
     token = create_access_token(user.id, user.name)
-    response = RedirectResponse(url="/", status_code=302)
+    response = RedirectResponse(url=request.scope.get("root_path", "") + "/", status_code=302)
     response.set_cookie(
         key=COOKIE_NAME, value=token,
         httponly=True, samesite="lax", max_age=60 * 60 * 24 * 30,
@@ -378,7 +383,7 @@ async def signup_submit(request: Request, db: Session = Depends(get_db)):
 @app.get("/logout")
 async def logout(request: Request):
     """Clear session cookie and redirect to login."""
-    response = RedirectResponse(url="/login", status_code=302)
+    response = RedirectResponse(url=request.scope.get("root_path", "") + "/login", status_code=302)
     response.delete_cookie(COOKIE_NAME)
     return response
 

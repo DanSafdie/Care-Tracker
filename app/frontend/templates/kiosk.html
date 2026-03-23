@@ -5,7 +5,7 @@
     <!-- Fire HD 10: CSS viewport ~1280x800 landscape; lock zoom for kiosk -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Care-Tracker Kiosk</title>
-    <link rel="stylesheet" href="/static/css/kiosk.css?v={{ now.timestamp() }}">
+    <link rel="stylesheet" href="{{ request.scope['root_path'] }}/static/css/kiosk.css?v={{ now.timestamp() }}">
 </head>
 <body>
 
@@ -60,11 +60,12 @@
     <!-- Toast for brief feedback -->
     <div class="kiosk-toast" id="kiosk-toast"></div>
 
-    <!-- Inject authenticated user for task attribution -->
+    <!-- Inject authenticated user and root path for task attribution and subpath routing -->
     <script>
         window.CURRENT_USER_NAME = {{ (current_user.name | tojson) if current_user else 'null' }};
+        window.ROOT_PATH = {{ (request.scope['root_path'] | tojson) }};
     </script>
-    <script src="/static/js/confetti-mega.js?v={{ now.timestamp() }}"></script>
-    <script src="/static/js/kiosk.js?v={{ now.timestamp() }}"></script>
+    <script src="{{ request.scope['root_path'] }}/static/js/confetti-mega.js?v={{ now.timestamp() }}"></script>
+    <script src="{{ request.scope['root_path'] }}/static/js/kiosk.js?v={{ now.timestamp() }}"></script>
 </body>
 </html>

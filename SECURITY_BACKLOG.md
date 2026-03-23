@@ -5,9 +5,13 @@
 > Roadmap accounts for planned expansion to track human medications (PII/PHI).  
 > Each task is self-contained and can be picked up independently unless noted.
 
-**Context note:** An nginx reverse proxy already runs in a separate Docker project
-(WorkoutTracker). Any HTTPS/proxy work must interplay with that existing setup —
-ask before making changes that could affect the other project.
+**Context note (updated 2026-03-22):** A dedicated shared reverse proxy project
+(`ReverseProxy/`) now exists, using Caddy with path-based routing. This supersedes
+the earlier approach of extending WorkoutTracker's nginx. Any HTTPS/proxy work
+for Care-Tracker goes through that project. See:
+- **Migration plan:** `ReverseProxy/MIGRATION.md` (Phase 1 is Care-Tracker)
+- **HTTP risk assessment:** `ReverseProxy/CARE_TRACKER_RISK.md` (full blast-radius
+  analysis, container isolation confirmation, mapping to SEC-XX items here)
 
 **Access model:** Public signup stays open. Anyone with an account can see pet
 care data (dogs). Future meds/health data will be scoped per-user via
@@ -20,19 +24,12 @@ permissions columns in the DB — not by restricting who can sign up.
 These matter right now, regardless of the meds expansion.
 
 ### SEC-01: Add HTTPS via reverse proxy
-- **Status:** DEFERRED — requires a dedicated infrastructure session.
-- **Risk:** Passwords, JWT cookies, and all data travel in plaintext over the public internet. With future med data, this becomes a PII leak vector.
-- **Scope:** Infrastructure / Docker config only — no app code changes.
-- **Note:** Nginx is already running in a sibling Docker project (WorkoutTracker). Options:
-  1. **Extend the existing nginx** to also proxy Care-Tracker (shared reverse proxy).
-  2. **Switch to a shared Caddy instance** that handles both projects (Caddy auto-provisions Let's Encrypt).
-  3. **Add a separate proxy** just for Care-Tracker (simpler but duplicates infra). (assuming its just more processing power, no big deal. this would be  prefered. )
-- **Architecture decision (2026-03-16):** The ideal pattern is a single shared reverse
-  proxy (Caddy or nginx) in its own Docker Compose project with an external Docker
-  network that other project containers join. This avoids duplicating proxy infra per
-  project but requires planning across WorkoutTracker + Care-Tracker together.
-- **Depends on:** Understanding the existing nginx setup first. SEC-08 should follow once HTTPS is live.
-- **Files:** `docker-compose.yml`, new proxy config, possibly the WorkoutTracker project.
+- **Status:** ✅ COMPLETE (2026-03-22)
+- **Resolution:** Shared Caddy reverse proxy (`ReverseProxy/` project) handles TLS
+  termination with auto-provisioned Let's Encrypt cert. Care-Tracker is served at
+  `https://cosmovpn.mynetgear.com/care/`. Router port 8273 closed — no more direct
+  HTTP access. All traffic encrypted in transit.
+- **Details:** `ReverseProxy/MIGRATION.md` (Phases 1-2), `ReverseProxy/CARE_TRACKER_RISK.md`.
 
 ### SEC-02: Add authentication to all API endpoints
 - **Risk:** 14+ API endpoints have zero auth. Anyone can read/modify pet care data, and once meds are added, that's health information exposed to the internet.
@@ -94,23 +91,22 @@ These become important with the meds expansion — health data raises the stakes
 - **Files:** `app/backend/main.py`, `requirements.txt`.
 
 ### SEC-08: Add `secure` flag to session cookies
-- **Status:** DEFERRED — depends on SEC-01 (HTTPS must be working first).
+- **Status:** UNBLOCKED — SEC-01 is complete, HTTPS is live. Ready to implement.
 - **Risk:** Without `secure=True`, the JWT cookie is sent over HTTP and can be intercepted.
+  Now that port 8273 is closed on the router, the only remaining vector is if a user
+  manually navigates to `http://` (Caddy redirects to HTTPS, but the first request
+  could leak the cookie).
 - **Scope:** Two `set_cookie()` calls in `app/backend/main.py` (login and signup).
-- **Change:** Add `secure=True` to both. Cannot enable until HTTPS is live or the
-  cookie won't be sent over plain HTTP, locking everyone out.
+- **Change:** Add `secure=True` to both.
 - **Files:** `app/backend/main.py`.
 
 ### SEC-09: Add security headers middleware
-- **Risk:** With health data, clickjacking and XSS protections become worthwhile.
-- **Scope:** Add a middleware in `app/backend/main.py`.
-- **Headers to add:**
-  - `X-Content-Type-Options: nosniff`
-  - `X-Frame-Options: DENY`
-  - `Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'`
-  - `Referrer-Policy: strict-origin-when-cross-origin`
-  - `Strict-Transport-Security: max-age=63072000; includeSubDomains` (after HTTPS)
-- **Files:** `app/backend/main.py`.
+- **Status:** ✅ COMPLETE (2026-03-22) — handled at proxy level, not app level.
+- **Resolution:** Caddy's global `(security_headers)` snippet applies HSTS,
+  X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy
+  to all responses. Server header stripped. Covers all apps behind the proxy.
+- **Note:** CSP (`Content-Security-Policy`) was not added — requires per-app tuning
+  for inline scripts/styles. Can be added app-side if needed for meds expansion.
 
 ---
 

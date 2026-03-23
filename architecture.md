@@ -23,6 +23,18 @@ A household pet care tracking system that enables multiple family members to coo
 | Testing | Pytest | Fast, simple test runner for API and core logic |
 | Server | Uvicorn | Production-ready ASGI server |
 
+## TLS & Reverse Proxy
+
+Public traffic is encrypted via a shared **Caddy** reverse proxy (`ReverseProxy/` project).
+
+- Served at `https://cosmovpn.mynetgear.com/care/` via path-based routing.
+- Caddy uses `handle /care*` (preserves prefix) — FastAPI's `root_path` remounts routes
+  and static files at the prefix, so stripping it would 404 static assets.
+- `ROOT_PATH=/care` env var drives the prefix: FastAPI reads it as `root_path`, templates
+  inject it as `window.ROOT_PATH` for JS fetch calls.
+- Security headers (HSTS, X-Frame-Options, etc.) applied globally by Caddy.
+- Migration details: `ReverseProxy/MIGRATION.md`.
+
 ## Project Structure
 
 ```

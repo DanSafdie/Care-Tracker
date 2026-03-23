@@ -7,6 +7,9 @@
  * base template from the authenticated session.
  */
 
+// Subpath prefix for reverse proxy routing (injected by template, empty string if direct access)
+const ROOT = window.ROOT_PATH || '';
+
 // Modal state (for confirmation dialogs)
 let pendingAction = null;
 
@@ -43,7 +46,7 @@ function updateUserDisplay() {
 function ensureUser() {
     const name = getCurrentUsername();
     if (!name) {
-        window.location.href = '/login';
+        window.location.href = ROOT + '/login';
         return false;
     }
     return name;
@@ -116,7 +119,7 @@ async function submitComplete(careItemId, taskName, petId) {
     if (!username) return;
 
     try {
-        const response = await fetch(`/api/tasks/${careItemId}/complete?completed_by=${encodeURIComponent(username)}`, {
+        const response = await fetch(`${ROOT}/api/tasks/${careItemId}/complete?completed_by=${encodeURIComponent(username)}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -204,7 +207,7 @@ async function submitUndo(careItemId) {
     if (!username) return;
 
     try {
-        const response = await fetch(`/api/tasks/${careItemId}/undo?completed_by=${encodeURIComponent(username)}`, {
+        const response = await fetch(`${ROOT}/api/tasks/${careItemId}/undo?completed_by=${encodeURIComponent(username)}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -230,7 +233,7 @@ async function submitUndo(careItemId) {
  */
 async function startTimer(petId, hours, label) {
     try {
-        const response = await fetch(`/api/pets/${petId}/timer?hours=${hours}&label=${encodeURIComponent(label)}`, {
+        const response = await fetch(`${ROOT}/api/pets/${petId}/timer?hours=${hours}&label=${encodeURIComponent(label)}`, {
             method: 'POST'
         });
         
@@ -249,7 +252,7 @@ async function startTimer(petId, hours, label) {
  */
 async function clearTimer(petId) {
     try {
-        const response = await fetch(`/api/pets/${petId}/timer`, {
+        const response = await fetch(`${ROOT}/api/pets/${petId}/timer`, {
             method: 'DELETE'
         });
         
@@ -378,7 +381,7 @@ document.addEventListener('keydown', (e) => {
  */
 function setupAutoRefresh() {
     setInterval(() => {
-        if (window.location.pathname !== '/') return;
+        if (window.location.pathname !== ROOT + '/') return;
 
         const confirmModal = document.getElementById('confirm-modal');
         const isConfirmModalOpen = confirmModal && confirmModal.style.display === 'flex';
@@ -401,7 +404,7 @@ function setupAutoRefresh() {
  * once per completion cycle (clears if a task is undone).
  */
 function checkAllTasksDone() {
-    if (window.location.pathname !== '/') return;
+    if (window.location.pathname !== ROOT + '/') return;
 
     const cards = document.querySelectorAll('.task-card');
     if (cards.length === 0) return;

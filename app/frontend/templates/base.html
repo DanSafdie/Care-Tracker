@@ -4,17 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Care-Tracker{% endblock %}</title>
-    <link rel="stylesheet" href="/static/css/style.css?v={{ now.timestamp() }}">
+    <link rel="stylesheet" href="{{ request.scope['root_path'] }}/static/css/style.css?v={{ now.timestamp() }}">
 </head>
 <body>
     <header>
         <nav>
             <div class="logo">🐾 Care-Tracker</div>
             <ul class="nav-links">
-                <li><a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Dashboard</a></li>
-                <li><a href="/history" class="{% if request.url.path == '/history' %}active{% endif %}">History</a></li>
+                <li><a href="{{ request.scope['root_path'] }}/" class="{% if request.url.path == '/' %}active{% endif %}">Dashboard</a></li>
+                <li><a href="{{ request.scope['root_path'] }}/history" class="{% if request.url.path == '/history' %}active{% endif %}">History</a></li>
                 <li class="nav-user">
-                    <a href="/account" class="nav-user-btn {% if request.url.path == '/account' %}active{% endif %}" style="text-decoration: none;">
+                    <a href="{{ request.scope['root_path'] }}/account" class="nav-user-btn {% if request.url.path == '/account' %}active{% endif %}" style="text-decoration: none;">
                         <span class="user-icon">👤</span>
                         <span id="current-user-name">{{ current_user.name if current_user else '...' }}</span>
                     </a>
@@ -31,13 +31,14 @@
         <p>Care Day: {{ care_day.strftime('%A, %B %d, %Y') if care_day else 'Unknown' }} | Day resets at 4:00 AM</p>
     </footer>
 
-    <!-- Pass authenticated username to JS for task completion attribution -->
+    <!-- Pass authenticated username and root path to JS for task completion and subpath routing -->
     <script>
         window.CURRENT_USER_NAME = {{ (current_user.name | tojson) if current_user else 'null' }};
         window.CURRENT_USER_ID = {{ (current_user.id | tojson) if current_user else 'null' }};
+        window.ROOT_PATH = {{ (request.scope['root_path'] | tojson) }};
     </script>
-    <script src="/static/js/confetti-mega.js?v={{ now.timestamp() }}"></script>
-    <script src="/static/js/app.js?v={{ now.timestamp() }}"></script>
+    <script src="{{ request.scope['root_path'] }}/static/js/confetti-mega.js?v={{ now.timestamp() }}"></script>
+    <script src="{{ request.scope['root_path'] }}/static/js/app.js?v={{ now.timestamp() }}"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

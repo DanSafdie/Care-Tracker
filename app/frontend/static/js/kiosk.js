@@ -11,6 +11,8 @@
 
 // ============== Constants ==============
 
+// Subpath prefix for reverse proxy routing (injected by template, empty string if direct access)
+var ROOT = window.ROOT_PATH || '';
 const REFRESH_INTERVAL_MS = 30000;
 const PILL_POCKET_ITEMS = ['Denamarin', 'Ursodiol'];
 const MEAL_ITEMS = ['Breakfast', 'Dinner'];
@@ -65,10 +67,10 @@ function updateClock() {
 // ============== Data Fetching ==============
 
 function fetchAndRender() {
-    fetch('/api/status')
+    fetch(ROOT + '/api/status')
         .then(function (res) {
             if (res.status === 401) {
-                window.location.href = '/login';
+                window.location.href = ROOT + '/login';
                 return null;
             }
             if (!res.ok) throw new Error('API ' + res.status);
@@ -282,7 +284,7 @@ function submitComplete(careItemId, taskName, petId) {
     var card = document.querySelector('[data-care-id="' + careItemId + '"]');
     if (card) card.classList.add('tapped');
 
-    fetch('/api/tasks/' + careItemId + '/complete?completed_by=' + encodeURIComponent(username), {
+    fetch(ROOT + '/api/tasks/' + careItemId + '/complete?completed_by=' + encodeURIComponent(username), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
     })
@@ -301,7 +303,7 @@ function submitComplete(careItemId, taskName, petId) {
 
 function submitUndo(careItemId) {
     var username = window.CURRENT_USER_NAME || 'Kiosk';
-    fetch('/api/tasks/' + careItemId + '/undo?completed_by=' + encodeURIComponent(username), {
+    fetch(ROOT + '/api/tasks/' + careItemId + '/undo?completed_by=' + encodeURIComponent(username), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
     })
@@ -372,7 +374,7 @@ function isTaskCompleted(tasks, name) {
 // ============== Timer API ==============
 
 function startKioskTimer(petId, hours, label) {
-    return fetch('/api/pets/' + petId + '/timer?hours=' + hours + '&label=' + encodeURIComponent(label), {
+    return fetch(ROOT + '/api/pets/' + petId + '/timer?hours=' + hours + '&label=' + encodeURIComponent(label), {
         method: 'POST'
     }).then(function (res) {
         if (!res.ok) showToast('Failed to start timer', 'error');
@@ -382,7 +384,7 @@ function startKioskTimer(petId, hours, label) {
 }
 
 function clearKioskTimer(petId) {
-    fetch('/api/pets/' + petId + '/timer', { method: 'DELETE' })
+    fetch(ROOT + '/api/pets/' + petId + '/timer', { method: 'DELETE' })
         .then(function (res) {
             if (res.ok) fetchAndRender();
             else showToast('Failed to clear timer', 'error');

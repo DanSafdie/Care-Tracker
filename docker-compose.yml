@@ -12,6 +12,16 @@ services:
     environment:
       - DATA_DIR=/data
       - TZ=America/New_York
+      - ROOT_PATH=/care
     restart: unless-stopped
+    networks:
+      - default
+      - proxy
+
+# Shared reverse proxy network — created manually: docker network create proxy
+# Allows Caddy to route traffic to this container by name (care-tracker:8273)
+networks:
+  proxy:
+    external: true
 
 
