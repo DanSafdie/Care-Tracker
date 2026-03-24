@@ -8,19 +8,46 @@ from datetime import date, datetime, timedelta
 from typing import List, Optional, Dict, Any
 
 from models import Pet, CareItem, TaskLog, User
-from schemas import PetCreate, CareItemCreate, UserCreate, UserUpdate
+from schemas import PetCreate, PetUpdate, CareItemCreate, CareItemUpdate, UserCreate, UserUpdate
 from utils import get_care_day
 from auth import hash_password, verify_password
 
 
 # ============== Pet Operations ==============
 
-def get_pets(db: Session, include_inactive: bool = False) -> List[Pet]:
-    """Get all pets, optionally including inactive ones."""
+def get_pets(db: Session, include_inactive: bool = False, current_user_id: int = None) -> List[Pet]:
+    """
+    Get pets visible to the current user.
+    Visibility rules:
+    - Public entities with care items: visible to everyone
+    - Public entities with NO care items: only visible to creator
+    - Private entities: only visible to creator
+    - Legacy entities (created_by=None): visible to everyone (backward compat)
+    """
     query = db.query(Pet)
     if not include_inactive:
         query = query.filter(Pet.is_active == True)
-    return query.all()
+    
+    all_pets = query.all()
+    
+    if current_user_id is None:
+        return all_pets
+    
+    visible = []
+    for pet in all_pets:
+        is_owner = (pet.created_by is None or pet.created_by == current_user_id)
+        
+        if is_owner:
+            # Owners always see their own entities
+            visible.append(pet)
+        elif pet.is_public:
+            # Non-owners only see public entities that have care items
+            has_items = any(ci.is_active for ci in pet.care_items)
+            if has_items:
+                visible.append(pet)
+        # Private entities are invisible to non-owners (skip)
+    
+    return visible
 
 
 def get_pet(db: Session, pet_id: int) -> Optional[Pet]:
@@ -28,10 +55,31 @@ def get_pet(db: Session, pet_id: int) -> Optional[Pet]:
     return db.query(Pet).filter(Pet.id == pet_id).first()
 
 
-def create_pet(db: Session, pet: PetCreate) -> Pet:
-    """Create a new pet."""
-    db_pet = Pet(**pet.model_dump())
+def create_pet(db: Session, pet: PetCreate, created_by: int = None) -> Pet:
+    """Create a new care entity."""
+    db_pet = Pet(
+        name=pet.name,
+        species=pet.species,
+        notes=pet.notes,
+        is_public=pet.is_public,
+        created_by=created_by,
+    )
     db.add(db_pet)
+    db.commit()
+    db.refresh(db_pet)
+    return db_pet
+
+
+def update_pet(db: Session, pet_id: int, pet_update: PetUpdate) -> Optional[Pet]:
+    """Update a care entity's details."""
+    db_pet = get_pet(db, pet_id)
+    if not db_pet:
+        return None
+    
+    update_data = pet_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_pet, key, value)
+    
     db.commit()
     db.refresh(db_pet)
     return db_pet
@@ -238,6 +286,21 @@ def create_care_item(db: Session, care_item: CareItemCreate) -> CareItem:
     """Create a new care item."""
     db_item = CareItem(**care_item.model_dump())
     db.add(db_item)
+    db.commit()
+    db.refresh(db_item)
+    return db_item
+
+
+def update_care_item(db: Session, care_item_id: int, item_update: CareItemUpdate) -> Optional[CareItem]:
+    """Update a care item's details."""
+    db_item = get_care_item(db, care_item_id)
+    if not db_item:
+        return None
+    
+    update_data = item_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_item, key, value)
+    
     db.commit()
     db.refresh(db_item)
     return db_item
@@ -457,15 +520,15 @@ def get_grid_history(db: Session, page: int = 1, page_size: int = 30) -> Dict[st
     }
 
 
-def get_daily_summary(db: Session, care_day: date = None) -> dict:
+def get_daily_summary(db: Session, care_day: date = None, current_user_id: int = None) -> dict:
     """
-    Get a summary of all tasks for a given day.
+    Get a summary of all tasks for a given day, filtered by visibility.
     Returns dict with pet info and task statuses.
     """
     if care_day is None:
         care_day = get_care_day()
     
-    pets = get_pets(db)
+    pets = get_pets(db, current_user_id=current_user_id)
     result = []
     
     for pet in pets:

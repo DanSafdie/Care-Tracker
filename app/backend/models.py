@@ -19,24 +19,31 @@ from database import Base
 
 class Pet(Base):
     """
-    A pet in the household.
+    A care entity in the household (pet, plant, appliance, etc.).
+    Named 'Pet' internally for backward compatibility, but displayed
+    as 'Care Entity' in the UI.
     """
     __tablename__ = "pets"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
-    species = Column(String(50), nullable=False)  # dog, cat, bird, etc.
-    notes = Column(Text, nullable=True)  # General notes about the pet
+    species = Column(String(50), nullable=False)  # dog, cat, bird, plant, appliance, etc.
+    notes = Column(Text, nullable=True)  # General notes about the entity
     created_at = Column(DateTime, server_default=func.now())
     is_active = Column(Boolean, default=True)  # Soft delete support
+    
+    # Ownership and visibility
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)  # null = legacy/seed data (visible to all)
+    is_public = Column(Boolean, default=True)  # Public: visible to all users (if has care items). Private: only creator sees it.
     
     # Timer fields (server-side tracking)
     timer_end_time = Column(DateTime, nullable=True)
     timer_label = Column(String(100), nullable=True)
     timer_alert_sent = Column(Boolean, default=False)
 
-    # Relationship to care items
+    # Relationships
     care_items = relationship("CareItem", back_populates="pet")
+    owner = relationship("User", foreign_keys=[created_by])
 
 
 class User(Base):

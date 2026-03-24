@@ -29,8 +29,8 @@ from slowapi.errors import RateLimitExceeded
 from database import get_db, init_db, SessionLocal
 from models import Pet, CareItem, TaskLog, User
 from schemas import (
-    PetResponse, PetCreate,
-    CareItemResponse, CareItemCreate,
+    PetResponse, PetCreate, PetUpdate,
+    CareItemResponse, CareItemCreate, CareItemUpdate,
     TaskLogResponse, TaskStatus, DailyStatus,
     HistoryEntry, UserResponse, UserCreate, UserUpdate,
     CheckInResponse, UserSignup, UserLogin, ChangePassword
@@ -395,7 +395,7 @@ async def home(request: Request, db: Session = Depends(get_db),
                current_user: User = Depends(get_current_user)):
     """Main dashboard showing today's tasks."""
     care_day = get_care_day()
-    daily_status = crud.get_daily_summary(db, care_day)
+    daily_status = crud.get_daily_summary(db, care_day, current_user_id=current_user.id)
     
     return templates.TemplateResponse("index.html", {
         "request": request,
@@ -478,6 +478,24 @@ async def account_page(request: Request,
     })
 
 
+@app.get("/manage", response_class=HTMLResponse)
+async def manage_page(request: Request, db: Session = Depends(get_db),
+                      current_user: User = Depends(get_current_user)):
+    """Manage care entities and their items."""
+    care_day = get_care_day()
+    # Show all entities the user owns (including ones without items)
+    all_pets = db.query(Pet).filter(Pet.is_active == True).all()
+    my_entities = [p for p in all_pets if p.created_by is None or p.created_by == current_user.id]
+    
+    return templates.TemplateResponse("manage.html", {
+        "request": request,
+        "care_day": care_day,
+        "now": to_local_time(datetime.utcnow()),
+        "current_user": current_user,
+        "entities": my_entities,
+    })
+
+
 @app.get("/api/history/grid")
 async def get_grid_history_api(page: int = 1, page_size: int = 30, db: Session = Depends(get_db),
                                current_user: User = Depends(get_current_user)):
@@ -490,24 +508,36 @@ async def get_grid_history_api(page: int = 1, page_size: int = 30, db: Session =
 @app.get("/api/pets", response_model=List[PetResponse])
 async def get_pets(db: Session = Depends(get_db),
                    current_user: User = Depends(get_current_user)):
-    """Get all active pets."""
-    return crud.get_pets(db)
+    """Get all active care entities visible to the current user."""
+    return crud.get_pets(db, current_user_id=current_user.id)
 
 
 @app.post("/api/pets", response_model=PetResponse)
 async def create_pet(pet: PetCreate, db: Session = Depends(get_db),
                      current_user: User = Depends(get_current_user)):
-    """Create a new pet."""
-    return crud.create_pet(db, pet)
+    """Create a new care entity, owned by the current user."""
+    return crud.create_pet(db, pet, created_by=current_user.id)
+
+
+@app.put("/api/pets/{pet_id}", response_model=PetResponse)
+async def update_pet(pet_id: int, pet_update: PetUpdate, db: Session = Depends(get_db),
+                     current_user: User = Depends(get_current_user)):
+    """Update a care entity. Only the creator (or legacy owners) can modify."""
+    pet = crud.get_pet(db, pet_id)
+    if not pet:
+        raise HTTPException(status_code=404, detail="Care entity not found")
+    if pet.created_by is not None and pet.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="You can only edit your own care entities")
+    return crud.update_pet(db, pet_id, pet_update)
 
 
 @app.get("/api/pets/{pet_id}", response_model=PetResponse)
 async def get_pet(pet_id: int, db: Session = Depends(get_db),
                   current_user: User = Depends(get_current_user)):
-    """Get a specific pet by ID."""
+    """Get a specific care entity by ID."""
     pet = crud.get_pet(db, pet_id)
     if not pet:
-        raise HTTPException(status_code=404, detail="Pet not found")
+        raise HTTPException(status_code=404, detail="Care entity not found")
     return pet
 
 
@@ -644,12 +674,27 @@ async def get_care_items(pet_id: Optional[int] = None, db: Session = Depends(get
 @app.post("/api/care-items", response_model=CareItemResponse)
 async def create_care_item(care_item: CareItemCreate, db: Session = Depends(get_db),
                            current_user: User = Depends(get_current_user)):
-    """Create a new care item for a pet."""
-    # Verify pet exists
+    """Create a new care item for a care entity."""
     pet = crud.get_pet(db, care_item.pet_id)
     if not pet:
-        raise HTTPException(status_code=404, detail="Pet not found")
+        raise HTTPException(status_code=404, detail="Care entity not found")
+    if pet.created_by is not None and pet.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="You can only add items to your own care entities")
     return crud.create_care_item(db, care_item)
+
+
+@app.put("/api/care-items/{care_item_id}", response_model=CareItemResponse)
+async def update_care_item_endpoint(care_item_id: int, item_update: CareItemUpdate,
+                                    db: Session = Depends(get_db),
+                                    current_user: User = Depends(get_current_user)):
+    """Update a care item. Only the entity's creator can modify."""
+    item = crud.get_care_item(db, care_item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Care item not found")
+    pet = crud.get_pet(db, item.pet_id)
+    if pet and pet.created_by is not None and pet.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="You can only edit items on your own care entities")
+    return crud.update_care_item(db, care_item_id, item_update)
 
 
 # ============== API Routes - Task Status ==============
@@ -659,12 +704,12 @@ async def get_daily_status(db: Session = Depends(get_db),
                            current_user: User = Depends(get_current_user)):
     """
     Get the current day's status for all pets and tasks.
-    This is the main endpoint for the dashboard.
+    Filtered by visibility rules for the current user.
     """
     care_day = get_care_day()
     return {
         "care_day": care_day.isoformat(),
-        "pets": crud.get_daily_summary(db, care_day)
+        "pets": crud.get_daily_summary(db, care_day, current_user_id=current_user.id)
     }
 
 

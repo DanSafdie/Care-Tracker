@@ -46,6 +46,30 @@ def get_db():
 def init_db():
     """
     Initialize the database by creating all tables.
+    Handles lightweight column migration for SQLite (adds missing columns).
     Called on application startup.
     """
     Base.metadata.create_all(bind=engine)
+    _migrate_columns()
+
+
+def _migrate_columns():
+    """
+    Add columns that may be missing from older schema versions.
+    SQLAlchemy's create_all won't add columns to existing tables,
+    so we check and ALTER TABLE as needed.
+    """
+    from sqlalchemy import text, inspect
+    inspector = inspect(engine)
+
+    migrations = [
+        ("pets", "created_by", "INTEGER"),
+        ("pets", "is_public", "BOOLEAN DEFAULT 1"),
+    ]
+
+    with engine.connect() as conn:
+        for table, column, col_type in migrations:
+            existing_cols = [c["name"] for c in inspector.get_columns(table)]
+            if column not in existing_cols:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"))
+                conn.commit()
