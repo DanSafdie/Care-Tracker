@@ -16,6 +16,12 @@ let pendingAction = null;
 // Timer interval handle
 let timerInterval = null;
 
+// Maps in-progress timer labels to their completed-state equivalents
+const TIMER_DONE_LABELS = {
+    'Digesting': 'Stomach empty',
+    'Absorbing meds': 'Meds absorbed'
+};
+
 // ============== User Identity (server-provided) ==============
 
 /**
@@ -156,7 +162,7 @@ async function handleTimerPrompts(taskName, petId) {
         if (!isDenaCompleted) {
             const mealName = taskName.toLowerCase();
             if (confirm(`${taskName} done! REMOVE FOOD NOW so she doesn't eat right before her meds. Start 2h timer? (Kitchen LED flashes green when done)`)) {
-                await startTimer(petId, 2, 'Empty stomach');
+                await startTimer(petId, 2, 'Digesting');
             }
         }
     } 
@@ -165,7 +171,7 @@ async function handleTimerPrompts(taskName, petId) {
         
         if (mealsRemaining) {
             if (confirm('Denamarin given! Start 1h meds absorption timer? (Kitchen LED flashes green when done)')) {
-                await startTimer(petId, 1, 'Next meal ready');
+                await startTimer(petId, 1, 'Absorbing meds');
             }
         }
     }
@@ -288,6 +294,7 @@ function initTimerDisplay(petId, label, endTimeStr) {
     labelEl.textContent = label;
     timerEl.style.display = 'block';
     timerEl.dataset.endTime = endTime;
+    timerEl.dataset.origLabel = label;
     
     updateTimerTick(petId, endTime);
     
@@ -308,6 +315,11 @@ function updateTimerTick(petId, endTime) {
         displayEl.textContent = "00:00:00 - READY!";
         displayEl.style.color = "var(--success)";
         timerEl.classList.add('timer-ready');
+        var origLabel = timerEl.dataset.origLabel || '';
+        var labelEl = document.getElementById(`timer-label-${petId}`);
+        if (labelEl && TIMER_DONE_LABELS[origLabel]) {
+            labelEl.textContent = TIMER_DONE_LABELS[origLabel];
+        }
         return;
     }
     

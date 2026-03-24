@@ -18,6 +18,12 @@ const PILL_POCKET_ITEMS = ['Denamarin', 'Ursodiol'];
 const MEAL_ITEMS = ['Breakfast', 'Dinner'];
 const DENA_ITEM = 'Denamarin';
 
+// Maps in-progress timer labels to their completed-state equivalents
+const TIMER_DONE_LABELS = {
+    'Digesting': 'Stomach empty',
+    'Absorbing meds': 'Meds absorbed'
+};
+
 // ============== State ==============
 
 var lastData = null;       // Most recent API response
@@ -147,9 +153,10 @@ function renderTimerBanner(pets) {
     banner.innerHTML = timers.map(function (t) {
         var remaining = t.endTime.getTime() - Date.now();
         var isReady = remaining <= 0;
-        return '<div class="timer-item' + (isReady ? ' ready' : '') + '" data-end="' + t.endTime.getTime() + '">' +
+        var displayLabel = isReady ? (TIMER_DONE_LABELS[t.label] || t.label) : t.label;
+        return '<div class="timer-item' + (isReady ? ' ready' : '') + '" data-end="' + t.endTime.getTime() + '" data-label="' + escapeAttr(t.label) + '">' +
             '<span class="timer-icon">' + (isReady ? '✅' : '⏱️') + '</span>' +
-            '<span class="timer-label">' + escapeHtml(t.label) + '</span>' +
+            '<span class="timer-label">' + escapeHtml(displayLabel) + '</span>' +
             '<span class="timer-countdown' + (isReady ? ' ready' : '') + '">' + formatCountdown(remaining) + '</span>' +
             '<button class="timer-clear-btn" onclick="event.stopPropagation(); clearKioskTimer(' + t.petId + ')">✕</button>' +
             '</div>';
@@ -253,6 +260,7 @@ function updateTimerCountdowns() {
 
         var cdEl = el.querySelector('.timer-countdown');
         var iconEl = el.querySelector('.timer-icon');
+        var labelEl = el.querySelector('.timer-label');
         if (cdEl) {
             cdEl.textContent = formatCountdown(remaining);
             if (isReady) {
@@ -262,6 +270,10 @@ function updateTimerCountdowns() {
         }
         if (iconEl && isReady) {
             iconEl.textContent = '✅';
+        }
+        if (labelEl && isReady) {
+            var origLabel = el.getAttribute('data-label') || '';
+            labelEl.textContent = TIMER_DONE_LABELS[origLabel] || origLabel;
         }
     }
 }
@@ -346,7 +358,7 @@ function handleTimerPrompts(taskName, petId) {
             taskName + ' done! REMOVE FOOD so she eats on an empty stomach before meds. Start 2h timer?',
             'Start Timer', 'Skip', false
         ).then(function (confirmed) {
-            if (confirmed) return startKioskTimer(petId, 2, 'Empty stomach');
+            if (confirmed) return startKioskTimer(petId, 2, 'Digesting');
         });
     }
 
@@ -357,7 +369,7 @@ function handleTimerPrompts(taskName, petId) {
             'Denamarin given! Start 1h absorption timer before next meal?',
             'Start Timer', 'Skip', false
         ).then(function (confirmed) {
-            if (confirmed) return startKioskTimer(petId, 1, 'Next meal ready');
+            if (confirmed) return startKioskTimer(petId, 1, 'Absorbing meds');
         });
     }
 
