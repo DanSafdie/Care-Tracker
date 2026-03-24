@@ -417,16 +417,17 @@ def get_history(
     return query.order_by(desc(TaskLog.timestamp), desc(TaskLog.id)).limit(limit).all()
 
 
-def get_grid_history(db: Session, page: int = 1, page_size: int = 30) -> Dict[str, Any]:
+def get_grid_history(db: Session, page: int = 1, page_size: int = 30, current_user_id: int = None) -> Dict[str, Any]:
     """
     Get history in a grid-friendly format for the UI.
     Rows: Dates (most recent first)
-    Columns: Active Care Items
+    Columns: Active Care Items (filtered by visibility)
     
     Args:
         db: Database session
         page: Page number (1-indexed)
         page_size: Number of days per page
+        current_user_id: Filter by visibility for this user
         
     Returns:
         Dict containing columns (items), rows (dates and statuses), and pagination info
@@ -440,8 +441,8 @@ def get_grid_history(db: Session, page: int = 1, page_size: int = 30) -> Dict[st
         target_date = today - timedelta(days=start_offset + i)
         dates.append(target_date)
         
-    # Get all active care items to serve as columns, ordered by pet then display_order
-    pets = get_pets(db)
+    # Get care items for visible pets only
+    pets = get_pets(db, current_user_id=current_user_id)
     columns = []
     for pet in pets:
         items = get_care_items(db, pet_id=pet.id)

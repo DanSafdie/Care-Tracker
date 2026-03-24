@@ -418,7 +418,7 @@ async def history_page(
     care_day = get_care_day()
     
     if view == "grid":
-        grid_data = crud.get_grid_history(db, page=page, page_size=30)
+        grid_data = crud.get_grid_history(db, page=page, page_size=30, current_user_id=current_user.id)
         return templates.TemplateResponse("history.html", {
             "request": request,
             "view": view,
@@ -499,8 +499,8 @@ async def manage_page(request: Request, db: Session = Depends(get_db),
 @app.get("/api/history/grid")
 async def get_grid_history_api(page: int = 1, page_size: int = 30, db: Session = Depends(get_db),
                                current_user: User = Depends(get_current_user)):
-    """API endpoint for grid history data."""
-    return crud.get_grid_history(db, page=page, page_size=page_size)
+    """API endpoint for grid history data (filtered by visibility)."""
+    return crud.get_grid_history(db, page=page, page_size=page_size, current_user_id=current_user.id)
 
 
 # ============== API Routes - Pets ==============
