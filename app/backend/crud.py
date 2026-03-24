@@ -3,7 +3,7 @@ CRUD (Create, Read, Update, Delete) operations for Care-Tracker.
 Database operations separated from API routes for cleaner code.
 """
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, desc, asc
+from sqlalchemy import and_, or_, desc, asc
 from datetime import date, datetime, timedelta
 from typing import List, Optional, Dict, Any
 
@@ -15,11 +15,20 @@ from auth import hash_password, verify_password
 
 # ============== Pet Operations ==============
 
-def get_pets(db: Session, include_inactive: bool = False) -> List[Pet]:
-    """Get all pets, optionally including inactive ones."""
+def get_pets(db: Session, include_inactive: bool = False, user_id: int = None) -> List[Pet]:
+    """
+    Get pets visible to the given user.
+    Visibility: shared pets (owner_id IS NULL) + pets owned by user_id.
+    If user_id is None, returns only shared pets (backward compat).
+    """
     query = db.query(Pet)
     if not include_inactive:
         query = query.filter(Pet.is_active == True)
+    # Scoping: shared (owner_id is NULL) OR owned by this user
+    if user_id is not None:
+        query = query.filter(or_(Pet.owner_id == None, Pet.owner_id == user_id))
+    else:
+        query = query.filter(Pet.owner_id == None)
     return query.all()
 
 
@@ -354,16 +363,18 @@ def get_history(
     return query.order_by(desc(TaskLog.timestamp), desc(TaskLog.id)).limit(limit).all()
 
 
-def get_grid_history(db: Session, page: int = 1, page_size: int = 30) -> Dict[str, Any]:
+def get_grid_history(db: Session, page: int = 1, page_size: int = 30, user_id: int = None) -> Dict[str, Any]:
     """
     Get history in a grid-friendly format for the UI.
     Rows: Dates (most recent first)
     Columns: Active Care Items
+    Scoped to pets visible to user_id.
     
     Args:
         db: Database session
         page: Page number (1-indexed)
         page_size: Number of days per page
+        user_id: Scope to this user's visible pets
         
     Returns:
         Dict containing columns (items), rows (dates and statuses), and pagination info
@@ -378,7 +389,7 @@ def get_grid_history(db: Session, page: int = 1, page_size: int = 30) -> Dict[st
         dates.append(target_date)
         
     # Get all active care items to serve as columns, ordered by pet then display_order
-    pets = get_pets(db)
+    pets = get_pets(db, user_id=user_id)
     columns = []
     for pet in pets:
         items = get_care_items(db, pet_id=pet.id)
@@ -457,15 +468,16 @@ def get_grid_history(db: Session, page: int = 1, page_size: int = 30) -> Dict[st
     }
 
 
-def get_daily_summary(db: Session, care_day: date = None) -> dict:
+def get_daily_summary(db: Session, care_day: date = None, user_id: int = None) -> dict:
     """
     Get a summary of all tasks for a given day.
     Returns dict with pet info and task statuses.
+    Scoped to pets visible to user_id (shared + owned).
     """
     if care_day is None:
         care_day = get_care_day()
     
-    pets = get_pets(db)
+    pets = get_pets(db, user_id=user_id)
     result = []
     
     for pet in pets:

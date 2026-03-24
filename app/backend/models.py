@@ -19,24 +19,31 @@ from database import Base
 
 class Pet(Base):
     """
-    A pet in the household.
+    A care subject in the household (pet or person).
+    owner_id scoping:
+      - NULL  → shared/household-wide (visible to all users, e.g. Chessie)
+      - set   → private to that user only (e.g. Dan's personal care items)
     """
     __tablename__ = "pets"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
-    species = Column(String(50), nullable=False)  # dog, cat, bird, etc.
-    notes = Column(Text, nullable=True)  # General notes about the pet
+    species = Column(String(50), nullable=False)  # dog, cat, bird, human, etc.
+    notes = Column(Text, nullable=True)  # General notes
     created_at = Column(DateTime, server_default=func.now())
     is_active = Column(Boolean, default=True)  # Soft delete support
+
+    # Ownership scoping: NULL = shared, user_id = private to that user
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     # Timer fields (server-side tracking)
     timer_end_time = Column(DateTime, nullable=True)
     timer_label = Column(String(100), nullable=True)
     timer_alert_sent = Column(Boolean, default=False)
 
-    # Relationship to care items
+    # Relationships
     care_items = relationship("CareItem", back_populates="pet")
+    owner = relationship("User", foreign_keys=[owner_id])
 
 
 class User(Base):

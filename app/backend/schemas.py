@@ -20,13 +20,14 @@ class PetBase(BaseModel):
 
 
 class PetCreate(PetBase):
-    pass
+    owner_id: Optional[int] = None  # NULL = shared/household-wide, set = private to that user
 
 
 class PetResponse(PetBase):
     id: int
     is_active: bool
     created_at: datetime
+    owner_id: Optional[int] = None
     timer_end_time: Optional[datetime] = None
     timer_label: Optional[str] = None
     timer_alert_sent: bool = False
