@@ -1,0 +1,718 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Care Entities - Care-Tracker{% endblock %}
+
+{% block content %}
+<div class="manage-container">
+    <h1>Manage Care Entities</h1>
+    <p class="subtitle">Add and configure the things you take care of — and what needs doing for each.</p>
+
+    <!-- Add New Entity Button -->
+    <button class="btn btn-primary add-entity-btn" onclick="showAddEntityForm()">+ Add Care Entity</button>
+
+    <!-- Add Entity Form (hidden by default) -->
+    <div id="add-entity-form" class="card manage-card" style="display: none;">
+        <h3>New Care Entity</h3>
+        <form onsubmit="submitNewEntity(event)">
+            <div class="form-group">
+                <label for="entity-name">Name</label>
+                <input type="text" id="entity-name" required placeholder="e.g. Luna, Fiddle Leaf Fig, Fish Tank">
+            </div>
+            <div class="form-group">
+                <label for="entity-type">Type</label>
+                <input type="text" id="entity-type" required placeholder="e.g. dog, cat, plant, aquarium">
+            </div>
+            <div class="form-group">
+                <label for="entity-notes">Notes (optional)</label>
+                <textarea id="entity-notes" rows="2" placeholder="General notes about this entity"></textarea>
+            </div>
+            <div class="form-group checkbox-group">
+                <input type="checkbox" id="entity-public" checked>
+                <label for="entity-public">Public — visible to all household members</label>
+            </div>
+            <p class="help-text" style="margin-top: -10px; margin-bottom: 15px;">
+                Private entities are only visible to you. Public entities appear for everyone once they have care items.
+            </p>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Create</button>
+                <button type="button" class="btn btn-secondary" onclick="hideAddEntityForm()">Cancel</button>
+                <div id="add-entity-status" class="status-msg"></div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Entity List -->
+    {% for entity in entities %}
+    <div class="card manage-card entity-card" data-entity-id="{{ entity.id }}">
+        <div class="entity-header">
+            <div class="entity-title">
+                <h2>{{ entity.name }}</h2>
+                <span class="entity-type-badge">{{ entity.species }}</span>
+                {% if entity.is_public %}
+                <span class="visibility-badge public">Public</span>
+                {% else %}
+                <span class="visibility-badge private">Private</span>
+                {% endif %}
+            </div>
+            <div class="entity-actions">
+                <button class="btn-icon" onclick="toggleEditEntity({{ entity.id }})" title="Edit">✏️</button>
+                <button class="btn-icon btn-icon-danger" onclick="deactivateEntity({{ entity.id }}, '{{ entity.name }}')" title="Remove">🗑️</button>
+            </div>
+        </div>
+
+        {% if entity.notes %}
+        <p class="entity-notes">{{ entity.notes }}</p>
+        {% endif %}
+
+        <!-- Edit Entity Form (hidden by default) -->
+        <div id="edit-entity-{{ entity.id }}" class="edit-form" style="display: none;">
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" id="edit-name-{{ entity.id }}" value="{{ entity.name }}">
+            </div>
+            <div class="form-group">
+                <label>Type</label>
+                <input type="text" id="edit-type-{{ entity.id }}" value="{{ entity.species }}">
+            </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea id="edit-notes-{{ entity.id }}" rows="2">{{ entity.notes or '' }}</textarea>
+            </div>
+            <div class="form-group checkbox-group">
+                <input type="checkbox" id="edit-public-{{ entity.id }}" {% if entity.is_public %}checked{% endif %}>
+                <label for="edit-public-{{ entity.id }}">Public</label>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary btn-sm" onclick="saveEntityEdit({{ entity.id }})">Save</button>
+                <button class="btn btn-secondary btn-sm" onclick="toggleEditEntity({{ entity.id }})">Cancel</button>
+                <div id="edit-entity-status-{{ entity.id }}" class="status-msg"></div>
+            </div>
+        </div>
+
+        <!-- Care Items for this entity -->
+        <div class="care-items-section">
+            <h3>Care Items</h3>
+            <div class="care-items-list" id="care-items-{{ entity.id }}">
+                {% for item in entity.care_items %}
+                {% if item.is_active %}
+                <div class="care-item-row" data-item-id="{{ item.id }}">
+                    <div class="care-item-info">
+                        <span class="item-name">{{ item.name }}</span>
+                        {% if item.category %}
+                        <span class="item-category {{ item.category }}">{{ item.category }}</span>
+                        {% endif %}
+                        {% if item.description %}
+                        <span class="item-desc">{{ item.description }}</span>
+                        {% endif %}
+                        {% if item.notes %}
+                        <span class="item-notes">📋 {{ item.notes }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="care-item-actions">
+                        <button class="btn-icon btn-icon-sm" onclick="toggleEditItem({{ item.id }})" title="Edit">✏️</button>
+                        <button class="btn-icon btn-icon-sm btn-icon-danger" onclick="deactivateItem({{ item.id }}, '{{ item.name }}')" title="Remove">✕</button>
+                    </div>
+                </div>
+                <!-- Edit Item Form (hidden) -->
+                <div id="edit-item-{{ item.id }}" class="edit-item-form" style="display: none;">
+                    <div class="edit-item-grid">
+                        <input type="text" id="edit-item-name-{{ item.id }}" value="{{ item.name }}" placeholder="Name">
+                        <select id="edit-item-category-{{ item.id }}">
+                            <option value="">Category...</option>
+                            <option value="medication" {% if item.category == 'medication' %}selected{% endif %}>Medication</option>
+                            <option value="supplement" {% if item.category == 'supplement' %}selected{% endif %}>Supplement</option>
+                            <option value="food" {% if item.category == 'food' %}selected{% endif %}>Food</option>
+                            <option value="other" {% if item.category == 'other' %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="edit-item-desc-{{ item.id }}" value="{{ item.description or '' }}" placeholder="Description">
+                        <input type="text" id="edit-item-notes-{{ item.id }}" value="{{ item.notes or '' }}" placeholder="Notes (timing, dependencies)">
+                        <input type="number" id="edit-item-order-{{ item.id }}" value="{{ item.display_order }}" placeholder="Order" min="0" style="width: 80px;">
+                    </div>
+                    <div class="form-actions" style="margin-top: 10px;">
+                        <button class="btn btn-primary btn-sm" onclick="saveItemEdit({{ item.id }})">Save</button>
+                        <button class="btn btn-secondary btn-sm" onclick="toggleEditItem({{ item.id }})">Cancel</button>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+
+            <!-- Add Care Item Form -->
+            <div class="add-item-row">
+                <button class="btn btn-outline btn-sm" onclick="toggleAddItem({{ entity.id }})">+ Add Care Item</button>
+            </div>
+            <div id="add-item-{{ entity.id }}" class="add-item-form" style="display: none;">
+                <div class="add-item-grid">
+                    <input type="text" id="new-item-name-{{ entity.id }}" placeholder="Item name (e.g. Breakfast, Medication)" required>
+                    <select id="new-item-category-{{ entity.id }}">
+                        <option value="">Category...</option>
+                        <option value="medication">Medication</option>
+                        <option value="supplement">Supplement</option>
+                        <option value="food">Food</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <input type="text" id="new-item-desc-{{ entity.id }}" placeholder="Description (optional)">
+                    <input type="text" id="new-item-notes-{{ entity.id }}" placeholder="Notes (optional, e.g. 'Give with food')">
+                    <input type="number" id="new-item-order-{{ entity.id }}" placeholder="Order" min="0" value="0" style="width: 80px;">
+                </div>
+                <div class="form-actions" style="margin-top: 10px;">
+                    <button class="btn btn-primary btn-sm" onclick="submitNewItem({{ entity.id }})">Add</button>
+                    <button class="btn btn-secondary btn-sm" onclick="toggleAddItem({{ entity.id }})">Cancel</button>
+                    <div id="add-item-status-{{ entity.id }}" class="status-msg"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    {% if not entities %}
+    <div class="empty-state">
+        <p>No care entities yet. Add one above to get started!</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Confirmation Modal (reuse pattern from dashboard) -->
+<div id="confirm-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3 id="modal-title">Confirm Action</h3>
+        <p id="modal-message">Are you sure?</p>
+        <div class="modal-buttons">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" id="modal-confirm">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .manage-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .add-entity-btn {
+        margin-bottom: 20px;
+        width: auto;
+    }
+
+    .manage-card {
+        background: white;
+        padding: 24px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
+    }
+
+    .entity-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .entity-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .entity-title h2 {
+        margin: 0;
+        font-size: 1.3rem;
+    }
+
+    .entity-type-badge {
+        background: var(--gray-200);
+        color: var(--gray-700);
+        font-size: 0.75rem;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: 500;
+    }
+
+    .visibility-badge {
+        font-size: 0.7rem;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .visibility-badge.public {
+        background: #d4edda;
+        color: #155724;
+    }
+    .visibility-badge.private {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .entity-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-icon {
+        background: none;
+        border: 1px solid var(--gray-300);
+        border-radius: 8px;
+        padding: 6px 10px;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: all 0.2s;
+    }
+    .btn-icon:hover {
+        background: var(--gray-100);
+        border-color: var(--primary);
+    }
+    .btn-icon-danger:hover {
+        border-color: var(--danger);
+        background: #fce4e4;
+    }
+    .btn-icon-sm {
+        padding: 3px 6px;
+        font-size: 0.8rem;
+    }
+
+    .entity-notes {
+        color: var(--gray-500);
+        font-style: italic;
+        margin-bottom: 16px;
+        font-size: 0.9rem;
+    }
+
+    .edit-form, .edit-item-form, .add-item-form {
+        background: var(--gray-100);
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+    }
+
+    .care-items-section {
+        border-top: 1px solid var(--gray-200);
+        padding-top: 16px;
+    }
+
+    .care-items-section h3 {
+        font-size: 1rem;
+        color: var(--gray-700);
+        margin-bottom: 12px;
+    }
+
+    .care-item-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 12px;
+        border: 1px solid var(--gray-200);
+        border-radius: 8px;
+        margin-bottom: 8px;
+        background: var(--gray-100);
+    }
+
+    .care-item-info {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .item-name {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .item-category {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        padding: 1px 6px;
+        border-radius: 4px;
+        color: white;
+        display: inline-block;
+        width: fit-content;
+    }
+    .item-category.medication { background: var(--cat-medication); }
+    .item-category.supplement { background: var(--cat-supplement); }
+    .item-category.food { background: var(--cat-food); }
+    .item-category.other { background: var(--cat-other); }
+
+    .item-desc {
+        font-size: 0.85rem;
+        color: var(--gray-700);
+    }
+
+    .item-notes {
+        font-size: 0.8rem;
+        color: var(--gray-500);
+    }
+
+    .care-item-actions {
+        display: flex;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+
+    .add-item-row {
+        margin-top: 8px;
+    }
+
+    .btn-outline {
+        background: white;
+        border: 1px dashed var(--gray-300);
+        color: var(--gray-700);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .btn-outline:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    .btn-sm {
+        padding: 6px 16px;
+        font-size: 0.85rem;
+        width: auto;
+    }
+
+    .add-item-grid, .edit-item-grid {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+    }
+
+    .add-item-grid input,
+    .add-item-grid select,
+    .edit-item-grid input,
+    .edit-item-grid select {
+        padding: 8px;
+        border: 1px solid var(--gray-300);
+        border-radius: 6px;
+        font-size: 0.9rem;
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #333;
+    }
+    .form-group input[type="text"],
+    .form-group textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 0.95rem;
+    }
+    .form-group textarea {
+        resize: vertical;
+        font-family: inherit;
+    }
+
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .checkbox-group input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+    .checkbox-group label {
+        margin-bottom: 0;
+        cursor: pointer;
+        font-weight: 500;
+    }
+
+    .help-text {
+        font-size: 0.82rem;
+        color: #666;
+        margin-top: 4px;
+    }
+
+    .form-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 20px;
+    }
+
+    .status-msg { font-size: 0.85rem; font-weight: 500; }
+    .status-msg.success { color: #28a745; }
+    .status-msg.error { color: #dc3545; }
+
+    @media (max-width: 768px) {
+        .entity-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .add-item-grid, .edit-item-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ROOT = window.ROOT_PATH || '';
+
+function showAddEntityForm() {
+    document.getElementById('add-entity-form').style.display = 'block';
+    document.getElementById('entity-name').focus();
+}
+
+function hideAddEntityForm() {
+    document.getElementById('add-entity-form').style.display = 'none';
+}
+
+async function submitNewEntity(e) {
+    e.preventDefault();
+    const name = document.getElementById('entity-name').value.trim();
+    const species = document.getElementById('entity-type').value.trim();
+    const notes = document.getElementById('entity-notes').value.trim();
+    const isPublic = document.getElementById('entity-public').checked;
+    const statusEl = document.getElementById('add-entity-status');
+
+    if (!name || !species) {
+        statusEl.textContent = 'Name and type are required.';
+        statusEl.className = 'status-msg error';
+        return;
+    }
+
+    statusEl.textContent = 'Creating...';
+    statusEl.className = 'status-msg';
+
+    try {
+        const resp = await fetch(`${ROOT}/api/pets`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, species, notes: notes || null, is_public: isPublic })
+        });
+
+        if (resp.ok) {
+            location.reload();
+        } else {
+            const err = await resp.json();
+            statusEl.textContent = err.detail || 'Failed to create.';
+            statusEl.className = 'status-msg error';
+        }
+    } catch (err) {
+        statusEl.textContent = 'Network error.';
+        statusEl.className = 'status-msg error';
+    }
+}
+
+function toggleEditEntity(entityId) {
+    const el = document.getElementById(`edit-entity-${entityId}`);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function saveEntityEdit(entityId) {
+    const name = document.getElementById(`edit-name-${entityId}`).value.trim();
+    const species = document.getElementById(`edit-type-${entityId}`).value.trim();
+    const notes = document.getElementById(`edit-notes-${entityId}`).value.trim();
+    const isPublic = document.getElementById(`edit-public-${entityId}`).checked;
+    const statusEl = document.getElementById(`edit-entity-status-${entityId}`);
+
+    if (!name || !species) {
+        statusEl.textContent = 'Name and type are required.';
+        statusEl.className = 'status-msg error';
+        return;
+    }
+
+    try {
+        const resp = await fetch(`${ROOT}/api/pets/${entityId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, species, notes: notes || null, is_public: isPublic })
+        });
+
+        if (resp.ok) {
+            location.reload();
+        } else {
+            const err = await resp.json();
+            statusEl.textContent = err.detail || 'Failed to save.';
+            statusEl.className = 'status-msg error';
+        }
+    } catch (err) {
+        statusEl.textContent = 'Network error.';
+        statusEl.className = 'status-msg error';
+    }
+}
+
+function deactivateEntity(entityId, name) {
+    showModal(
+        'Remove Care Entity?',
+        `Are you sure you want to remove "${name}"? This will hide it and all its care items from the dashboard.`,
+        async () => {
+            try {
+                const resp = await fetch(`${ROOT}/api/pets/${entityId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_active: false })
+                });
+                if (resp.ok) {
+                    location.reload();
+                } else {
+                    alert('Failed to remove entity.');
+                }
+            } catch (err) {
+                alert('Network error.');
+            }
+        }
+    );
+}
+
+function toggleAddItem(entityId) {
+    const el = document.getElementById(`add-item-${entityId}`);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    if (el.style.display === 'block') {
+        document.getElementById(`new-item-name-${entityId}`).focus();
+    }
+}
+
+async function submitNewItem(entityId) {
+    const name = document.getElementById(`new-item-name-${entityId}`).value.trim();
+    const category = document.getElementById(`new-item-category-${entityId}`).value;
+    const description = document.getElementById(`new-item-desc-${entityId}`).value.trim();
+    const notes = document.getElementById(`new-item-notes-${entityId}`).value.trim();
+    const order = parseInt(document.getElementById(`new-item-order-${entityId}`).value) || 0;
+    const statusEl = document.getElementById(`add-item-status-${entityId}`);
+
+    if (!name) {
+        statusEl.textContent = 'Item name is required.';
+        statusEl.className = 'status-msg error';
+        return;
+    }
+
+    statusEl.textContent = 'Adding...';
+    statusEl.className = 'status-msg';
+
+    try {
+        const resp = await fetch(`${ROOT}/api/care-items`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                pet_id: entityId,
+                name,
+                category: category || null,
+                description: description || null,
+                notes: notes || null,
+                display_order: order
+            })
+        });
+
+        if (resp.ok) {
+            location.reload();
+        } else {
+            const err = await resp.json();
+            statusEl.textContent = err.detail || 'Failed to add item.';
+            statusEl.className = 'status-msg error';
+        }
+    } catch (err) {
+        statusEl.textContent = 'Network error.';
+        statusEl.className = 'status-msg error';
+    }
+}
+
+function toggleEditItem(itemId) {
+    const el = document.getElementById(`edit-item-${itemId}`);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function saveItemEdit(itemId) {
+    const name = document.getElementById(`edit-item-name-${itemId}`).value.trim();
+    const category = document.getElementById(`edit-item-category-${itemId}`).value;
+    const description = document.getElementById(`edit-item-desc-${itemId}`).value.trim();
+    const notes = document.getElementById(`edit-item-notes-${itemId}`).value.trim();
+    const order = parseInt(document.getElementById(`edit-item-order-${itemId}`).value) || 0;
+
+    if (!name) {
+        alert('Item name is required.');
+        return;
+    }
+
+    try {
+        const resp = await fetch(`${ROOT}/api/care-items/${itemId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name,
+                category: category || null,
+                description: description || null,
+                notes: notes || null,
+                display_order: order
+            })
+        });
+
+        if (resp.ok) {
+            location.reload();
+        } else {
+            const err = await resp.json();
+            alert(err.detail || 'Failed to save item.');
+        }
+    } catch (err) {
+        alert('Network error.');
+    }
+}
+
+function deactivateItem(itemId, name) {
+    showModal(
+        'Remove Care Item?',
+        `Remove "${name}"? It will no longer appear on the dashboard.`,
+        async () => {
+            try {
+                const resp = await fetch(`${ROOT}/api/care-items/${itemId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_active: false })
+                });
+                if (resp.ok) {
+                    location.reload();
+                } else {
+                    alert('Failed to remove item.');
+                }
+            } catch (err) {
+                alert('Network error.');
+            }
+        }
+    );
+}
+
+let pendingAction = null;
+
+function showModal(title, message, onConfirm) {
+    const modal = document.getElementById('confirm-modal');
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-message').textContent = message;
+    pendingAction = onConfirm;
+
+    document.getElementById('modal-confirm').onclick = () => {
+        const action = pendingAction;
+        closeModal();
+        if (action) action();
+    };
+
+    modal.style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('confirm-modal').style.display = 'none';
+    pendingAction = null;
+}
+
+document.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('confirm-modal')) closeModal();
+});
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+});
+</script>
+{% endblock %}

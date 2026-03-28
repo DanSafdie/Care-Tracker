@@ -11,7 +11,7 @@ from typing import Optional, List
 _E164_RE = re.compile(r"^\+[1-9]\d{1,14}$")
 
 
-# ============== Pet Schemas ==============
+# ============== Pet (Care Entity) Schemas ==============
 
 class PetBase(BaseModel):
     name: str
@@ -20,12 +20,22 @@ class PetBase(BaseModel):
 
 
 class PetCreate(PetBase):
-    pass
+    is_public: bool = True
+
+
+class PetUpdate(BaseModel):
+    name: Optional[str] = None
+    species: Optional[str] = None
+    notes: Optional[str] = None
+    is_public: Optional[bool] = None
+    is_active: Optional[bool] = None
 
 
 class PetResponse(PetBase):
     id: int
     is_active: bool
+    is_public: bool = True
+    created_by: Optional[int] = None
     created_at: datetime
     timer_end_time: Optional[datetime] = None
     timer_label: Optional[str] = None
@@ -116,6 +126,15 @@ class CareItemBase(BaseModel):
 
 class CareItemCreate(CareItemBase):
     pet_id: int
+
+
+class CareItemUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    notes: Optional[str] = None
+    category: Optional[str] = None
+    display_order: Optional[int] = None
+    is_active: Optional[bool] = None
 
 
 class CareItemResponse(CareItemBase):

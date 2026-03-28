@@ -752,6 +752,40 @@ footer {
     color: var(--primary);
 }
 
+/* ============== Visibility & Empty States ============== */
+.private-indicator {
+    font-size: 0.75rem;
+    vertical-align: middle;
+    margin-left: 4px;
+}
+
+.empty-entity-hint {
+    text-align: center;
+    padding: var(--space-lg);
+    color: var(--gray-500);
+    font-size: 0.9rem;
+}
+
+.empty-entity-hint a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.empty-entity-hint a:hover {
+    text-decoration: underline;
+}
+
+.empty-state a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.empty-state a:hover {
+    text-decoration: underline;
+}
+
 /* ============== Responsive ============== */
 @media (max-width: 768px) {
     nav {

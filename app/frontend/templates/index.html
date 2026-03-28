@@ -10,7 +10,11 @@
     {% for pet_data in daily_status %}
     <section class="pet-section">
         <div class="pet-header">
-            <h2>{{ pet_data.pet.name }} <span class="pet-species">({{ pet_data.pet.species }})</span></h2>
+            <h2>{{ pet_data.pet.name }} <span class="pet-species">({{ pet_data.pet.species }})</span>
+                {% if not pet_data.pet.is_public %}
+                <span class="private-indicator" title="Only visible to you">🔒</span>
+                {% endif %}
+            </h2>
             
             <!-- Timer Container -->
             <div id="pet-timer-{{ pet_data.pet.id }}" class="pet-timer" style="display: none;">
@@ -27,6 +31,7 @@
         <p class="pet-notes">{{ pet_data.pet.notes }}</p>
         {% endif %}
 
+        {% if pet_data.tasks %}
         <div class="task-grid">
             {% for task in pet_data.tasks %}
             <div class="task-card {% if task.is_completed %}completed{% endif %}" data-care-item-id="{{ task.care_item.id }}">
@@ -74,12 +79,17 @@
             </div>
             {% endfor %}
         </div>
+        {% else %}
+        <div class="empty-entity-hint">
+            <p>No care items yet. <a href="{{ request.scope['root_path'] }}/manage">Add some in Manage</a>.</p>
+        </div>
+        {% endif %}
     </section>
     {% endfor %}
 
     {% if not daily_status %}
     <div class="empty-state">
-        <p>No pets or care items configured yet.</p>
+        <p>No care entities configured yet. <a href="{{ request.scope['root_path'] }}/manage">Get started in Manage</a>.</p>
     </div>
     {% endif %}
 </div>
