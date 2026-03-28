@@ -20,7 +20,8 @@ class PetBase(BaseModel):
 
 
 class PetCreate(PetBase):
-    pass
+    is_private: bool = False
+    owner_id: Optional[int] = None
 
 
 class PetResponse(PetBase):
@@ -30,6 +31,8 @@ class PetResponse(PetBase):
     timer_end_time: Optional[datetime] = None
     timer_label: Optional[str] = None
     timer_alert_sent: bool = False
+    is_private: bool = False
+    owner_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -116,6 +119,8 @@ class CareItemBase(BaseModel):
 
 class CareItemCreate(CareItemBase):
     pet_id: int
+    is_private: bool = False
+    owner_id: Optional[int] = None
 
 
 class CareItemResponse(CareItemBase):
@@ -123,6 +128,8 @@ class CareItemResponse(CareItemBase):
     pet_id: int
     is_active: bool
     created_at: datetime
+    is_private: bool = False
+    owner_id: Optional[int] = None
 
     class Config:
         from_attributes = True
