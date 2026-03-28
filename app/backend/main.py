@@ -237,23 +237,23 @@ def nightly_reminder_job():
         if not users:
             return
 
-        # Get daily summary
         care_day = get_care_day()
-        summary = crud.get_daily_summary(db, care_day)
         
-        incomplete_tasks = []
-        for pet_data in summary:
-            pet_name = pet_data['pet'].name
-            pending = [t['care_item'].name for t in pet_data['tasks'] if not t['is_completed']]
-            if pending:
-                incomplete_tasks.append(f"{pet_name}: {', '.join(pending)}")
-        
-        if not incomplete_tasks:
-            # Everything done! (Maybe send a "Good job" text? Plan doesn't specify, so let's skip for now to save Twilio credits)
-            return
-
-        message = "🌙 Nightly Reminder - Still to do:\n" + "\n".join(incomplete_tasks)
+        # Each user gets their own scoped summary (shared pets + their private ones)
         for user in users:
+            summary = crud.get_daily_summary(db, care_day, user_id=user.id)
+            
+            incomplete_tasks = []
+            for pet_data in summary:
+                pet_name = pet_data['pet'].name
+                pending = [t['care_item'].name for t in pet_data['tasks'] if not t['is_completed']]
+                if pending:
+                    incomplete_tasks.append(f"{pet_name}: {', '.join(pending)}")
+            
+            if not incomplete_tasks:
+                continue
+
+            message = "🌙 Nightly Reminder - Still to do:\n" + "\n".join(incomplete_tasks)
             send_sms(user.phone_number, message)
             
     except Exception as e:
@@ -397,7 +397,7 @@ async def home(request: Request, db: Session = Depends(get_db),
                current_user: User = Depends(get_current_user)):
     """Main dashboard showing today's tasks."""
     care_day = get_care_day()
-    daily_status = crud.get_daily_summary(db, care_day)
+    daily_status = crud.get_daily_summary(db, care_day, user_id=current_user.id)
     
     return templates.TemplateResponse("index.html", {
         "request": request,
@@ -420,7 +420,7 @@ async def history_page(
     care_day = get_care_day()
     
     if view == "grid":
-        grid_data = crud.get_grid_history(db, page=page, page_size=30)
+        grid_data = crud.get_grid_history(db, page=page, page_size=30, user_id=current_user.id)
         return templates.TemplateResponse("history.html", {
             "request": request,
             "view": view,
@@ -433,11 +433,14 @@ async def history_page(
         # List view (existing logic)
         history = crud.get_history(db, limit=100)
         
-        # Enrich with pet/item names
+        # Enrich with pet/item names, filtering out private pets not owned by current user
         history_entries = []
         for log in history:
             care_item = crud.get_care_item(db, log.care_item_id)
             pet = crud.get_pet(db, care_item.pet_id) if care_item else None
+            # Skip entries for private pets belonging to other users
+            if pet and pet.owner_id is not None and pet.owner_id != current_user.id:
+                continue
             history_entries.append({
                 "log": log,
                 "pet_name": pet.name if pet else "Unknown",
@@ -484,7 +487,7 @@ async def account_page(request: Request,
 async def get_grid_history_api(page: int = 1, page_size: int = 30, db: Session = Depends(get_db),
                                current_user: User = Depends(get_current_user)):
     """API endpoint for grid history data."""
-    return crud.get_grid_history(db, page=page, page_size=page_size)
+    return crud.get_grid_history(db, page=page, page_size=page_size, user_id=current_user.id)
 
 
 # ============== API Routes - Pets ==============
@@ -492,8 +495,8 @@ async def get_grid_history_api(page: int = 1, page_size: int = 30, db: Session =
 @app.get("/api/pets", response_model=List[PetResponse])
 async def get_pets(db: Session = Depends(get_db),
                    current_user: User = Depends(get_current_user)):
-    """Get all active pets."""
-    return crud.get_pets(db)
+    """Get all active pets visible to the current user."""
+    return crud.get_pets(db, user_id=current_user.id)
 
 
 @app.post("/api/pets", response_model=PetResponse)
@@ -509,6 +512,9 @@ async def get_pet(pet_id: int, db: Session = Depends(get_db),
     """Get a specific pet by ID."""
     pet = crud.get_pet(db, pet_id)
     if not pet:
+        raise HTTPException(status_code=404, detail="Pet not found")
+    # Ownership check: private pets are only visible to their owner
+    if pet.owner_id is not None and pet.owner_id != current_user.id:
         raise HTTPException(status_code=404, detail="Pet not found")
     return pet
 
@@ -666,7 +672,7 @@ async def get_daily_status(db: Session = Depends(get_db),
     care_day = get_care_day()
     return {
         "care_day": care_day.isoformat(),
-        "pets": crud.get_daily_summary(db, care_day)
+        "pets": crud.get_daily_summary(db, care_day, user_id=current_user.id)
     }
 
 
@@ -684,6 +690,11 @@ async def complete_task(
     # Verify care item exists
     care_item = crud.get_care_item(db, care_item_id)
     if not care_item:
+        raise HTTPException(status_code=404, detail="Care item not found")
+    
+    # Ownership check: private pets are only accessible by their owner
+    pet = crud.get_pet(db, care_item.pet_id)
+    if pet and pet.owner_id is not None and pet.owner_id != current_user.id:
         raise HTTPException(status_code=404, detail="Care item not found")
     
     # Check if already completed
@@ -714,6 +725,11 @@ async def undo_task(
     # Verify care item exists
     care_item = crud.get_care_item(db, care_item_id)
     if not care_item:
+        raise HTTPException(status_code=404, detail="Care item not found")
+    
+    # Ownership check: private pets are only accessible by their owner
+    pet = crud.get_pet(db, care_item.pet_id)
+    if pet and pet.owner_id is not None and pet.owner_id != current_user.id:
         raise HTTPException(status_code=404, detail="Care item not found")
     
     # Check if actually completed
