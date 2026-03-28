@@ -96,6 +96,8 @@ Represents a pet in the household.
 | timer_end_time | datetime | Future expiration time for an active timer |
 | timer_label | string | Human-readable label for the timer |
 | timer_alert_sent | bool | Flag to track if the expiration SMS has been sent |
+| is_private | bool | When true, text alerts only go to the owner |
+| owner_id | int (FK → User) | Owner for privacy filtering (nullable) |
 
 ### User
 A user/caretaker in the household.
@@ -124,6 +126,8 @@ A care task associated with a pet.
 | category | string | medication, food, supplement, etc. |
 | display_order | int | UI ordering |
 | is_active | bool | Soft delete flag |
+| is_private | bool | When true, text alerts only go to the owner |
+| owner_id | int (FK → User) | Owner for privacy filtering (nullable) |
 
 ### TaskLog
 Historical record of task completions and undos.
@@ -254,6 +258,7 @@ The system provides real-time SMS alerts via Twilio to keep household members in
 - **Utility**: `app/backend/sms_utils.py` handles the Twilio API client.
 - **Environment**: Requires `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_PHONE_NUMBER`.
 - **Recipient Filtering**: Alerts are only sent to users with `wants_alerts = True`, a valid `phone_number`, and whose `alert_expiry_date` is either null or in the future.
+- **Privacy Filtering**: Pets and care items can be marked `is_private = True` with an `owner_id` FK pointing to the owning user. When private, timer alerts and nightly reminders for that pet/item are sent only to the owner — not to every opted-in user. Public items (the default) continue to alert everyone.
 
 ## 4 AM Day Reset Logic
 
