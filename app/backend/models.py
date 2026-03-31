@@ -35,8 +35,13 @@ class Pet(Base):
     timer_label = Column(String(100), nullable=True)
     timer_alert_sent = Column(Boolean, default=False)
 
-    # Relationship to care items
+    # Privacy: when True, text alerts about this pet only go to the owner
+    is_private = Column(Boolean, default=False)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    # Relationships
     care_items = relationship("CareItem", back_populates="pet")
+    owner = relationship("User", foreign_keys=[owner_id])
 
 
 class User(Base):
@@ -79,9 +84,14 @@ class CareItem(Base):
     created_at = Column(DateTime, server_default=func.now())
     is_active = Column(Boolean, default=True)  # Soft delete support
 
+    # Privacy: when True, text alerts about this item only go to the owner
+    is_private = Column(Boolean, default=False)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
     # Relationships
     pet = relationship("Pet", back_populates="care_items")
     task_logs = relationship("TaskLog", back_populates="care_item")
+    owner = relationship("User", foreign_keys=[owner_id])
 
 
 class TaskLog(Base):
