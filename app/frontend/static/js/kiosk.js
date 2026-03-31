@@ -73,7 +73,7 @@ function updateClock() {
 // ============== Data Fetching ==============
 
 function fetchAndRender() {
-    fetch(ROOT + '/api/status')
+    fetch(ROOT + '/api/status?kiosk_mode=true')
         .then(function (res) {
             if (res.status === 401) {
                 window.location.href = ROOT + '/login';
