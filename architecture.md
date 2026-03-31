@@ -96,6 +96,8 @@ Represents a pet in the household.
 | timer_end_time | datetime | Future expiration time for an active timer |
 | timer_label | string | Human-readable label for the timer |
 | timer_alert_sent | bool | Flag to track if the expiration SMS has been sent |
+| created_by | int (FK → User) | Who created this entity (nullable for legacy data) |
+| is_public | bool | When true, visible to all users and alerts go to everyone |
 
 ### User
 A user/caretaker in the household.
@@ -124,6 +126,8 @@ A care task associated with a pet.
 | category | string | medication, food, supplement, etc. |
 | display_order | int | UI ordering |
 | is_active | bool | Soft delete flag |
+| created_by | int (FK → User) | Who created this item (nullable for legacy data) |
+| is_public | bool | When true, visible to all users and alerts go to everyone |
 
 ### TaskLog
 Historical record of task completions and undos.
@@ -254,6 +258,7 @@ The system provides real-time SMS alerts via Twilio to keep household members in
 - **Utility**: `app/backend/sms_utils.py` handles the Twilio API client.
 - **Environment**: Requires `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_PHONE_NUMBER`.
 - **Recipient Filtering**: Alerts are only sent to users with `wants_alerts = True`, a valid `phone_number`, and whose `alert_expiry_date` is either null or in the future.
+- **Visibility & Alert Filtering**: Pets and care items have `is_public` (default True) and `created_by` (FK → User). Non-public entities are only visible in the UI to their creator, and timer alerts and nightly reminders are sent only to the creator — not to every opted-in user. Public entities remain visible and alertable to everyone.
 
 ## 4 AM Day Reset Logic
 

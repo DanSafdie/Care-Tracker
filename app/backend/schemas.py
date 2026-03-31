@@ -126,6 +126,7 @@ class CareItemBase(BaseModel):
 
 class CareItemCreate(CareItemBase):
     pet_id: int
+    is_public: bool = True
 
 
 class CareItemUpdate(BaseModel):
@@ -142,6 +143,8 @@ class CareItemResponse(CareItemBase):
     pet_id: int
     is_active: bool
     created_at: datetime
+    is_public: bool = True
+    created_by: Optional[int] = None
 
     class Config:
         from_attributes = True

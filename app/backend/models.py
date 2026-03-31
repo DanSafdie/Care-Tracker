@@ -23,11 +23,11 @@ class Pet(Base):
     Named 'Pet' internally for backward compatibility, but displayed
     as 'Care Entity' in the UI.
 
-    Ownership & visibility:
+    Ownership & visibility (same model for UI and SMS alerts):
       - created_by=NULL  → legacy/seed data, visible to all users
       - created_by=N     → created by user N
-      - is_public=True   → visible to all users (if has care items)
-      - is_public=False  → only visible to creator
+      - is_public=True   → visible to all users, alerts go to everyone
+      - is_public=False  → only visible to creator, alerts only to creator
     """
     __tablename__ = "pets"
 
@@ -92,9 +92,14 @@ class CareItem(Base):
     created_at = Column(DateTime, server_default=func.now())
     is_active = Column(Boolean, default=True)  # Soft delete support
 
+    # Ownership: who created this item, and whether it's visible to all users
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    is_public = Column(Boolean, default=True)
+
     # Relationships
     pet = relationship("Pet", back_populates="care_items")
     task_logs = relationship("TaskLog", back_populates="care_item")
+    owner = relationship("User", foreign_keys=[created_by])
 
 
 class TaskLog(Base):

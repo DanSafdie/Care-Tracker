@@ -164,7 +164,10 @@ def sync_led_status(db: Session):
 scheduler = BackgroundScheduler()
 
 def check_timers_job():
-    """Poll for expired timers and send SMS alerts."""
+    """Poll for expired timers and send SMS alerts.
+    
+    Non-public pets only send alerts to their creator, not all users.
+    """
     db = SessionLocal()
     try:
         now = datetime.now()
@@ -177,21 +180,26 @@ def check_timers_job():
         
         # Send alerts if there are new expired timers
         if expired_pets:
-            # Get users who should receive alerts
-            users = db.query(User).filter(
+            # Get all users who have opted in to alerts
+            alert_users = db.query(User).filter(
                 User.wants_alerts == True,
                 User.phone_number != None,
                 (User.alert_expiry_date == None) | (User.alert_expiry_date >= get_care_day())
             ).all()
             
-            if users:
+            if alert_users:
                 for pet in expired_pets:
                     message = f"⏰ Timer for {pet.name} ({pet.timer_label}) has run out!"
-                    for user in users:
+
+                    # Non-public pets: only notify the creator
+                    if not pet.is_public and pet.created_by:
+                        recipients = [u for u in alert_users if u.id == pet.created_by]
+                    else:
+                        recipients = alert_users
+
+                    for user in recipients:
                         send_sms(user.phone_number, message)
                     
-                    # Mark the timer as alerted so it doesn't alert again
-                    # BUT keep the timer fields so it stays "READY!" in the UI
                     pet.timer_alert_sent = True
             else:
                 # Still mark as alerted so they don't keep trying every minute
@@ -224,7 +232,11 @@ def daily_reset_job():
 
 
 def nightly_reminder_job():
-    """Send a summary of incomplete tasks at 9 PM."""
+    """Send a summary of incomplete tasks at 9 PM.
+    
+    Non-public pets/items are only included in their creator's summary.
+    Public items are included for everyone.
+    """
     db = SessionLocal()
     try:
         # Get users who should receive alerts
@@ -237,23 +249,36 @@ def nightly_reminder_job():
         if not users:
             return
 
-        # Get daily summary
         care_day = get_care_day()
         summary = crud.get_daily_summary(db, care_day)
         
-        incomplete_tasks = []
-        for pet_data in summary:
-            pet_name = pet_data['pet'].name
-            pending = [t['care_item'].name for t in pet_data['tasks'] if not t['is_completed']]
-            if pending:
-                incomplete_tasks.append(f"{pet_name}: {', '.join(pending)}")
-        
-        if not incomplete_tasks:
-            # Everything done! (Maybe send a "Good job" text? Plan doesn't specify, so let's skip for now to save Twilio credits)
-            return
-
-        message = "🌙 Nightly Reminder - Still to do:\n" + "\n".join(incomplete_tasks)
+        # Build a per-user reminder: filter private pets/items to their owner
         for user in users:
+            incomplete_tasks = []
+            for pet_data in summary:
+                pet = pet_data['pet']
+
+                # Skip entire pet if it's non-public and this user isn't the creator
+                if not pet.is_public and pet.created_by and pet.created_by != user.id:
+                    continue
+
+                pending = []
+                for t in pet_data['tasks']:
+                    if t['is_completed']:
+                        continue
+                    item = t['care_item']
+                    # Skip individual non-public items that belong to another creator
+                    if not item.is_public and item.created_by and item.created_by != user.id:
+                        continue
+                    pending.append(item.name)
+
+                if pending:
+                    incomplete_tasks.append(f"{pet.name}: {', '.join(pending)}")
+            
+            if not incomplete_tasks:
+                continue
+
+            message = "🌙 Nightly Reminder - Still to do:\n" + "\n".join(incomplete_tasks)
             send_sms(user.phone_number, message)
             
     except Exception as e:
