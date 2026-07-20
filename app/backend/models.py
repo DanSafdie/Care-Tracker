@@ -37,6 +37,7 @@ class Pet(Base):
     notes = Column(Text, nullable=True)  # General notes about the entity
     created_at = Column(DateTime, server_default=func.now())
     is_active = Column(Boolean, default=True)  # Soft delete support
+    display_order = Column(Integer, default=0)  # For UI ordering on dashboard/manage
 
     # Ownership and visibility
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
@@ -48,7 +49,9 @@ class Pet(Base):
     timer_alert_sent = Column(Boolean, default=False)
 
     # Relationships
-    care_items = relationship("CareItem", back_populates="pet")
+    care_items = relationship(
+        "CareItem", back_populates="pet", order_by="CareItem.display_order"
+    )
     owner = relationship("User", foreign_keys=[created_by])
 
 

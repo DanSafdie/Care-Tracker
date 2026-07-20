@@ -17,7 +17,7 @@ from auth import hash_password, verify_password
 
 def get_pets(db: Session, include_inactive: bool = False, current_user_id: int = None) -> List[Pet]:
     """
-    Get pets visible to the current user.
+    Get pets visible to the current user, sorted by display_order.
     Visibility rules:
     - Public entities with care items: visible to everyone
     - Public entities with NO care items: only visible to creator
@@ -28,7 +28,7 @@ def get_pets(db: Session, include_inactive: bool = False, current_user_id: int =
     if not include_inactive:
         query = query.filter(Pet.is_active == True)
 
-    all_pets = query.all()
+    all_pets = query.order_by(Pet.display_order, Pet.id).all()
 
     if current_user_id is None:
         return all_pets
@@ -55,12 +55,17 @@ def get_pet(db: Session, pet_id: int) -> Optional[Pet]:
 
 def create_pet(db: Session, pet: PetCreate, created_by: int = None) -> Pet:
     """Create a new care entity."""
+    # Place new entities at the end of the list
+    max_order = db.query(Pet.display_order).order_by(Pet.display_order.desc()).first()
+    next_order = (max_order[0] + 1) if max_order and max_order[0] is not None else 0
+
     db_pet = Pet(
         name=pet.name,
         species=pet.species,
         notes=pet.notes,
         is_public=pet.is_public,
         created_by=created_by,
+        display_order=next_order,
     )
     db.add(db_pet)
     db.commit()
@@ -81,6 +86,28 @@ def update_pet(db: Session, pet_id: int, pet_update: PetUpdate) -> Optional[Pet]
     db.commit()
     db.refresh(db_pet)
     return db_pet
+
+
+def reorder_pets(db: Session, pet_ids: List[int]) -> List[Pet]:
+    """
+    Set display_order for pets based on the given ID list.
+    IDs not in the list keep their current order at the end.
+    """
+    if not pet_ids:
+        return get_pets(db, include_inactive=True)
+
+    pets_by_id = {
+        pet.id: pet
+        for pet in db.query(Pet).filter(Pet.id.in_(pet_ids)).all()
+    }
+
+    for index, pet_id in enumerate(pet_ids):
+        pet = pets_by_id.get(pet_id)
+        if pet:
+            pet.display_order = index
+
+    db.commit()
+
 
 def clear_all_expired_timers(db: Session) -> int:
     now = datetime.now()

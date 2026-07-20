@@ -65,6 +65,7 @@ def _migrate_columns():
     migrations = [
         ("pets", "created_by", "INTEGER"),
         ("pets", "is_public", "BOOLEAN DEFAULT 1"),
+        ("pets", "display_order", "INTEGER DEFAULT 0"),
     ]
 
     with engine.connect() as conn:
@@ -73,3 +74,7 @@ def _migrate_columns():
             if column not in existing_cols:
                 conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"))
                 conn.commit()
+                # Backfill display_order for existing pets using id to preserve current order
+                if table == "pets" and column == "display_order":
+                    conn.execute(text("UPDATE pets SET display_order = id"))
+                    conn.commit()

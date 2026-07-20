@@ -35,7 +35,8 @@ def seed_chessie_data(db: Session):
     chessie = Pet(
         name="Chessie",
         species="dog",
-        notes="Our beloved pup. Requires daily medications and supplements."
+        notes="Our beloved pup. Requires daily medications and supplements.",
+        display_order=1,
     )
     db.add(chessie)
     db.flush()  # Get the ID without committing

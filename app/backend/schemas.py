@@ -29,6 +29,7 @@ class PetUpdate(BaseModel):
     notes: Optional[str] = None
     is_public: Optional[bool] = None
     is_active: Optional[bool] = None
+    display_order: Optional[int] = None
 
 
 class PetResponse(PetBase):
@@ -36,6 +37,7 @@ class PetResponse(PetBase):
     is_active: bool
     is_public: bool = True
     created_by: Optional[int] = None
+    display_order: int = 0
     created_at: datetime
     timer_end_time: Optional[datetime] = None
     timer_label: Optional[str] = None
@@ -182,6 +184,11 @@ class TaskStatus(BaseModel):
     is_completed: bool
     completed_at: Optional[datetime] = None
     completed_by: Optional[str] = None
+
+
+class PetReorderRequest(BaseModel):
+    """Ordered list of pet IDs — position in the list becomes display_order."""
+    order: List[int]
 
 
 class DailyStatus(BaseModel):
