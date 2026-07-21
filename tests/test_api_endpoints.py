@@ -70,6 +70,27 @@ class TestAPI:
         assert len(pets) >= 1
         assert any(p["id"] == pet_id for p in pets)
 
+    def test_pet_reorder(self, auth_client):
+        """Test reordering care entities (pets, people, etc.)."""
+        client, _ = auth_client
+
+        pet_a = client.post("/api/pets", json={"name": "Alpha", "species": "person"}).json()
+        pet_b = client.post("/api/pets", json={"name": "Beta", "species": "dog"}).json()
+        pet_c = client.post("/api/pets", json={"name": "Gamma", "species": "person"}).json()
+
+        # Reorder: Gamma, Alpha, Beta
+        resp = client.patch("/api/pets/reorder", json={
+            "order": [pet_c["id"], pet_a["id"], pet_b["id"]]
+        })
+        assert resp.status_code == 200
+        ordered = resp.json()
+        assert [p["name"] for p in ordered[:3]] == ["Gamma", "Alpha", "Beta"]
+
+        # Dashboard status should follow the same order
+        status_resp = client.get("/api/status")
+        status_names = [p["pet"]["name"] for p in status_resp.json()["pets"]]
+        assert status_names[:3] == ["Gamma", "Alpha", "Beta"]
+
     def test_care_item_lifecycle(self, auth_client):
         """Test creating a care item, completing it, and undoing it."""
         client, _ = auth_client

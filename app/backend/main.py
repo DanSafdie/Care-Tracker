@@ -29,7 +29,7 @@ from slowapi.errors import RateLimitExceeded
 from database import get_db, init_db, SessionLocal
 from models import Pet, CareItem, TaskLog, User
 from schemas import (
-    PetResponse, PetCreate, PetUpdate,
+    PetResponse, PetCreate, PetUpdate, PetReorderRequest,
     CareItemResponse, CareItemCreate, CareItemUpdate,
     TaskLogResponse, TaskStatus, DailyStatus,
     HistoryEntry, UserResponse, UserCreate, UserUpdate,
@@ -541,6 +541,21 @@ async def create_pet(pet: PetCreate, db: Session = Depends(get_db),
                      current_user: User = Depends(get_current_user)):
     """Create a new care entity, owned by the current user."""
     return crud.create_pet(db, pet, created_by=current_user.id)
+
+
+@app.patch("/api/pets/reorder", response_model=List[PetResponse])
+async def reorder_pets(
+    body: PetReorderRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Reorder care entities (pets, people, etc.) for the dashboard."""
+    visible_ids = {pet.id for pet in crud.get_pets(db, current_user_id=current_user.id)}
+    for pet_id in body.order:
+        if pet_id not in visible_ids:
+            raise HTTPException(status_code=403, detail=f"Cannot reorder entity {pet_id}")
+    crud.reorder_pets(db, body.order)
+    return crud.get_pets(db, current_user_id=current_user.id)
 
 
 @app.get("/api/pets/{pet_id}", response_model=PetResponse)

@@ -5,7 +5,7 @@
 {% block content %}
 <div class="manage-container">
     <h1>Manage Care Entities</h1>
-    <p class="subtitle">Add and configure the things you take care of — pets, people, plants — and what needs doing for each.</p>
+    <p class="subtitle">Add and configure the things you take care of — pets, people, plants — and what needs doing for each. Use the ↑↓ buttons to change the order they appear on the dashboard.</p>
 
     <!-- Add New Entity Button -->
     <button class="btn btn-primary add-entity-btn" onclick="showAddEntityForm()">+ Add Care Entity</button>
@@ -42,10 +42,15 @@
     </div>
 
     <!-- Entity List -->
+    <div id="entity-list" class="entity-list">
     {% for entity in entities %}
     <div class="card manage-card entity-card" data-entity-id="{{ entity.id }}">
         <div class="entity-header">
             <div class="entity-title">
+                <div class="entity-reorder-btns" title="Change display order">
+                    <button type="button" class="btn-reorder" onclick="moveEntity({{ entity.id }}, -1)" aria-label="Move {{ entity.name }} up">↑</button>
+                    <button type="button" class="btn-reorder" onclick="moveEntity({{ entity.id }}, 1)" aria-label="Move {{ entity.name }} down">↓</button>
+                </div>
                 <h2>{{ entity.name }}</h2>
                 <span class="entity-type-badge">{{ entity.species }}</span>
                 {% if entity.is_public %}
@@ -168,6 +173,7 @@
         </div>
     </div>
     {% endfor %}
+    </div>
 
     {% if not entities %}
     <div class="empty-state">
@@ -193,6 +199,29 @@
 <style>
     .manage-container { max-width: 900px; margin: 0 auto; padding: 20px; }
     .add-entity-btn { margin-bottom: 20px; }
+
+    .entity-list { display: flex; flex-direction: column; gap: 0; }
+
+    .entity-reorder-btns {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin-right: 4px;
+    }
+    .btn-reorder {
+        background: #f5f5f5;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        width: 28px;
+        height: 22px;
+        padding: 0;
+        cursor: pointer;
+        font-size: 0.75rem;
+        line-height: 1;
+        color: #555;
+    }
+    .btn-reorder:hover { background: #e8f4fd; border-color: #1976d2; color: #1976d2; }
+    .btn-reorder:disabled { opacity: 0.35; cursor: not-allowed; }
 
     .manage-card {
         padding: 20px;
@@ -619,6 +648,64 @@ function deactivateItem(itemId, name) {
         }
     );
 }
+
+function getEntityOrder() {
+    return Array.from(document.querySelectorAll('.entity-card'))
+        .map(card => parseInt(card.dataset.entityId, 10));
+}
+
+function updateReorderButtons() {
+    const cards = document.querySelectorAll('.entity-card');
+    cards.forEach((card, index) => {
+        const upBtn = card.querySelector('.btn-reorder:first-child');
+        const downBtn = card.querySelector('.btn-reorder:last-child');
+        if (upBtn) upBtn.disabled = index === 0;
+        if (downBtn) downBtn.disabled = index === cards.length - 1;
+    });
+}
+
+async function saveEntityOrder() {
+    const order = getEntityOrder();
+    const resp = await fetch(`${ROOT}/api/pets/reorder`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order })
+    });
+    if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to save order');
+    }
+}
+
+async function moveEntity(entityId, direction) {
+    const list = document.getElementById('entity-list');
+    const cards = Array.from(list.querySelectorAll('.entity-card'));
+    const index = cards.findIndex(card => parseInt(card.dataset.entityId, 10) === entityId);
+    const targetIndex = index + direction;
+
+    if (index < 0 || targetIndex < 0 || targetIndex >= cards.length) {
+        return;
+    }
+
+    const moving = cards[index];
+    const target = cards[targetIndex];
+    if (direction < 0) {
+        list.insertBefore(moving, target);
+    } else {
+        list.insertBefore(moving, target.nextSibling);
+    }
+
+    updateReorderButtons();
+
+    try {
+        await saveEntityOrder();
+    } catch (err) {
+        alert(err.message || 'Failed to save order.');
+        location.reload();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', updateReorderButtons);
 
 </script>
 {% endblock %}
